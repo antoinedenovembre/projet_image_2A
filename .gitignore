@@ -10,8 +10,9 @@
 .vscode/
 
 # Generated outputs
-*.a
-res/*
+*build*
+closedCV/build/*
+closedCV/res/*
 
 # User-specific files
 *.rsuser

@@ -1,4 +1,0 @@
-/Users/adute/Desktop/ipsi2/Image/TraitementAnalyse/closedCV/build/CMakeFiles/closedCV.dir
-/Users/adute/Desktop/ipsi2/Image/TraitementAnalyse/closedCV/build/CMakeFiles/app.dir
-/Users/adute/Desktop/ipsi2/Image/TraitementAnalyse/closedCV/build/CMakeFiles/edit_cache.dir
-/Users/adute/Desktop/ipsi2/Image/TraitementAnalyse/closedCV/build/CMakeFiles/rebuild_cache.dir

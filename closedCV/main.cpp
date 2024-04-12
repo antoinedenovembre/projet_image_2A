@@ -1,5 +1,6 @@
-#include <cmath>
+#include <filesystem>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "ImageClasse.hpp"
@@ -7,38 +8,68 @@
 #include "ImageDouble.hpp"
 #include "ImageNdg.hpp"
 
+namespace fs = std::__fs::filesystem;
+
+std::vector<std::string> get_filenames(const std::string & path)
+{
+    std::vector<std::string> filenames;
+    for (const auto & entry : fs::directory_iterator(path))
+    {
+        if (entry.is_regular_file())
+        {
+            filenames.push_back(entry.path().filename().string());
+        }
+    }
+    return filenames;
+}
+
 int main(void)
 {
+    std::string folderPath     = "img";
+    std::string testFolderPath = folderPath + "/test";
+    std::string gtFolderPath   = folderPath + "/gt";
+
     try
     {
-        CImageNdg cells{"img/amas.bmp"};
+        // Get filenames from the test folder
+        std::vector<std::string> testImages = get_filenames(testFolderPath);
 
-        cells = cells.seuillage();
+        // Loop through each image name
+        for (const std::string & filename : testImages)
+        {
+            std::string testImagePath = testFolderPath + "/" + filename;
+            std::string gtFilename =
+                filename.substr(0, filename.find_last_of(".")) + ".png"; // Change extension to .png
+            std::string gtImagePath = gtFolderPath + "/" + gtFilename;
 
-		cells.sauvegarde("seuillage");
-		
-		CImageClasse cellsClasse{cells, "V8"};
+            // Load the test image
+            CImageNdg testImage{testImagePath};
 
-        CImageClasse voronoi = cellsClasse.voronoi();
+            // Load the ground truth image
+            // CImageNdg gtImage{gtImagePath};
 
-        voronoi.sauvegarde("voronoi");
+            // Process the test image
+            CImageNdg processedImage = testImage.process();
 
-        /*
-		CImageNdg cells{"img/cellules.bmp"};
+            // Compare the processed image with the ground truth image
+            // TO BE IMPLEMENTED
 
-        CImageClasse cellsClasse{cells.seuillage(), "V8"};
-
-        cellsClasse.sauvegarde("classeCells");
-
-        std::vector<SIGNATURE_Forme> sigs = cellsClasse.sigComposantesConnexes();
-
-        cellsClasse.circleInEachComponent(sigs);
-
-        cellsClasse.sauvegarde("classeCellsCircles");
-        */
+            // Save the processed image
+            processedImage.sauvegarde("processed_" + filename);
+        }
     }
-    catch (const std::string & chaine)
+    catch (const fs::filesystem_error & e)
     {
-        std::cerr << chaine << std::endl;
+        std::cerr << "Filesystem error: " << e.what() << std::endl;
     }
+    catch (const std::exception & e)
+    {
+        std::cerr << "Standard exception: " << e.what() << std::endl;
+    }
+    catch (const char * e)
+    {
+        std::cerr << "Exception: " << e << std::endl;
+    }
+
+    return 0;
 }

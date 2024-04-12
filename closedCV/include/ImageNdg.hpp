@@ -100,6 +100,8 @@ public:
     // operateur copie image par imOut = imIn
     _EXPORT_ CImageNdg & operator=(const CImageNdg & im);
 
+	_EXPORT_ CImageNdg & operator-(const CImageNdg & im);
+
     // get et set
 
     _EXPORT_ int lireHauteur() const
@@ -302,6 +304,8 @@ public:
     // element structurant options : "V4" ou "V8"
     _EXPORT_ CImageNdg morphologie(const std::string methode = "dilatation", const std::string eltStructurant = "V8");
 
+    _EXPORT_ CImageNdg nonMaximaSuppression(const CImageNdg & angleImage);
+
     _EXPORT_ CImageNdg filtrage(const std::string & methode = "moyennage", int Ni = 3,
                                 int Nj = 3); // choix "moyennage" / "median"
 
@@ -310,6 +314,12 @@ public:
 
     _EXPORT_ CImageNdg horizontalConcatenate(const CImageNdg & im);
     _EXPORT_ CImageNdg verticalConcatenate(const CImageNdg & im);
+
+    _EXPORT_ CImageNdg sobel();
+    _EXPORT_ CImageNdg invert();
+
+    // Image processing algorithm for the project
+    _EXPORT_ CImageNdg process();
 };
 
 #endif // _IMAGE_NDG_

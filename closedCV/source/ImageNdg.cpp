@@ -273,6 +273,20 @@ CImageNdg & CImageNdg::operator=(const CImageNdg & im)
     return *this;
 }
 
+_EXPORT_ CImageNdg & CImageNdg::operator-(const CImageNdg & im)
+{
+	if ((&im == this) || (im.lireHauteur() != this->lireHauteur()) || (im.lireLargeur() != this->lireLargeur()))
+	{
+		throw std::string("ERREUR : Operation impossible entre ces 2 images !");
+		return *this;
+	}
+
+	for (int i = 0; i < this->lireNbPixels(); i++)
+		this->operator()(i) = this->operator()(i) - im(i);
+
+	return *this;
+}
+
 // fonctionnalit�s histogramme
 std::vector<unsigned long> CImageNdg::histogramme(bool enregistrementCSV)
 {
@@ -913,6 +927,42 @@ CImageNdg CImageNdg::morphologie(const std::string methode, const std::string el
     return out;
 }
 
+CImageNdg CImageNdg::nonMaximaSuppression(const CImageNdg & angleImage)
+{
+    CImageNdg result(this->lireHauteur(), this->lireLargeur());
+    result.m_sNom = this->lireNom() + "NMS";
+    result.choixPalette(this->lirePalette());
+    result.m_bBinaire = this->m_bBinaire;
+
+    for (int i = 1; i < this->lireHauteur() - 1; i++)
+    {
+        for (int j = 1; j < this->lireLargeur() - 1; j++)
+        {
+            float angle = angleImage(i, j) * 180.0 / M_PI; // Convert radian to degree
+            angle       = fmod(angle + 360, 360);          // Ensure angle is within [0,360)
+
+            // Determine the direction of the edge
+            int q = 255, r = 255;
+            if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle < 202.5) || (angle >= 337.5 && angle <= 360))
+                q = this->operator()(i, j + 1), r = this->operator()(i, j - 1);
+            else if ((angle >= 22.5 && angle < 67.5) || (angle >= 202.5 && angle < 247.5))
+                q = this->operator()(i + 1, j - 1), r = this->operator()(i - 1, j + 1);
+            else if ((angle >= 67.5 && angle < 112.5) || (angle >= 247.5 && angle < 292.5))
+                q = this->operator()(i + 1, j), r = this->operator()(i - 1, j);
+            else if ((angle >= 112.5 && angle < 157.5) || (angle >= 292.5 && angle < 337.5))
+                q = this->operator()(i - 1, j - 1), r = this->operator()(i + 1, j + 1);
+
+            // Suppress non-maxima
+            if (this->operator()(i, j) >= q && this->operator()(i, j) >= r)
+                result(i, j) = this->operator()(i, j);
+            else
+                result(i, j) = 0;
+        }
+    }
+
+    return result;
+}
+
 CImageNdg CImageNdg::filtrage(const std::string & methode, int Ni, int Nj)
 {
 
@@ -981,6 +1031,60 @@ CImageNdg CImageNdg::filtrage(const std::string & methode, int Ni, int Nj)
 
                 voisinage.clear();
             }
+    }
+    else if (methode.compare("gaussien") == 0)
+    {
+        int nbBordsi = Ni / 2;
+        int nbBordsj = Nj / 2;
+
+        std::vector<double> noyau;
+        noyau.resize(Ni * Nj);
+
+        double somme = 0;
+        for (int i = 0; i < Ni; i++)
+            for (int j = 0; j < Nj; j++)
+            {
+                noyau.at(i * Nj + j) =
+                    exp(-((i - nbBordsi) * (i - nbBordsi) + (j - nbBordsj) * (j - nbBordsj)) / (2 * 1 * 1));
+                somme += noyau.at(i * Nj + j);
+            }
+
+        for (int i = 0; i < Ni; i++)
+            for (int j = 0; j < Nj; j++)
+                noyau.at(i * Nj + j) /= somme;
+
+        for (int i = 0; i < this->lireHauteur(); i++)
+            for (int j = 0; j < this->lireLargeur(); j++)
+            {
+                // gestion des bords
+                int dk       = std::max(0, i - nbBordsi);
+                int fk       = std::min(i + nbBordsi, this->lireHauteur() - 1);
+                int dl       = std::max(0, j - nbBordsj);
+                int fl       = std::min(j + nbBordsj, this->lireLargeur() - 1);
+
+                double somme = 0;
+                double moy   = 0;
+                for (int k = dk; k <= fk; k++)
+                    for (int l = dl; l <= fl; l++)
+                    {
+                        moy += (double)this->operator()(k, l) * noyau.at((k - dk) * Nj + (l - dl));
+                        somme += noyau.at((k - dk) * Nj + (l - dl));
+                    }
+                out(i, j) = (int)(moy / somme);
+            }
+    }
+    else if (methode.compare("canny") == 0)
+    {
+        CImageDouble imgDouble(*this);
+        CImageDouble imgDoubleFiltre        = imgDouble.filtrage("gaussien", Ni, Nj);
+        CImageDouble imgDoubleGradient      = imgDoubleFiltre.vecteurGradient("norme");
+        CImageDouble imgDoubleGradientAngle = imgDoubleFiltre.vecteurGradient("angle");
+
+        CImageNdg imgNdgGradient            = imgDoubleGradient.toNdg();
+        CImageNdg imgNdgGradientAngle       = imgDoubleGradientAngle.toNdg();
+
+        CImageNdg imgNdgGradientNonMaxSuppr = imgNdgGradient.nonMaximaSuppression(imgNdgGradientAngle);
+        out                                 = imgNdgGradientNonMaxSuppr.seuillage("manuel", 50, 100);
     }
 
     return out;
@@ -1200,4 +1304,90 @@ _EXPORT_ CImageNdg CImageNdg::verticalConcatenate(const CImageNdg & im)
     }
 
     return res;
+}
+
+_EXPORT_ CImageNdg CImageNdg::sobel()
+{
+    CImageNdg imgSobel(lireHauteur(), lireLargeur());
+
+    // Initialize borders to zero
+    for (int i = 0; i < lireHauteur(); i++)
+    {
+        imgSobel(i, 0)                 = 0;
+        imgSobel(i, lireLargeur() - 1) = 0;
+    }
+    for (int j = 0; j < lireLargeur(); j++)
+    {
+        imgSobel(0, j)                 = 0;
+        imgSobel(lireHauteur() - 1, j) = 0;
+    }
+
+    // Sobel operator
+    int Gx[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+
+    int Gy[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
+
+    for (int i = 1; i < lireHauteur() - 1; i++)
+    {
+        for (int j = 1; j < lireLargeur() - 1; j++)
+        {
+            int sumX = 0;
+            int sumY = 0;
+
+            for (int k = -1; k <= 1; k++)
+            {
+                for (int l = -1; l <= 1; l++)
+                {
+                    sumX += operator()(i + k, j + l) * Gx[k + 1][l + 1];
+                    sumY += operator()(i + k, j + l) * Gy[k + 1][l + 1];
+                }
+            }
+
+            // Calculate the magnitude of gradients
+            int sum        = static_cast<int>(sqrt(sumX * sumX + sumY * sumY));
+            // Clamp the value to the 0-255 range
+            imgSobel(i, j) = std::min(std::max(sum, 0), 255);
+        }
+    }
+
+    return imgSobel;
+}
+
+_EXPORT_ CImageNdg CImageNdg::invert()
+{
+    CImageNdg imgInvert(lireHauteur(), lireLargeur());
+
+    for (int i = 0; i < lireHauteur(); i++)
+    {
+        for (int j = 0; j < lireLargeur(); j++)
+        {
+            imgInvert(i, j) = 255 - operator()(i, j);
+        }
+    }
+
+    return imgInvert;
+}
+
+_EXPORT_ CImageNdg CImageNdg::process()
+{
+    CImageNdg tmp = *this;
+
+    std::cout << "Processing image " << tmp.lireNom() << std::endl;
+
+    // Invert the image if its name starts with "In"
+    if (tmp.lireNom().find("In") == 0)
+    {
+        tmp = tmp.invert();
+    }
+
+    // First step, we apply a gaussian filter to the image
+    CImageNdg imgFiltered = tmp.filtrage("median", 5, 5);
+
+	// Contours detection, sobel operator
+	CImageNdg imgSobel    = imgFiltered.sobel();
+
+	// Thresholding
+	CImageNdg imgThresholded = imgSobel.seuillage("otsu");
+
+    return imgThresholded;
 }
