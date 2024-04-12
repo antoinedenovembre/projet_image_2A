@@ -1805,3 +1805,25 @@ void CImageClasse::drawCircle(int p_cx, int p_cy, int p_radius, int p_color)
         }
     }
 }
+
+_EXPORT_ void CImageClasse::supprComposante(int num)
+{
+    for (int i = 0; i < this->lireNbPixels(); i++)
+		if (this->operator()(i) == static_cast<unsigned long>(num))
+			this->operator()(i) = 0;
+}
+
+_EXPORT_ void CImageClasse::supprComposantesTaille(const std::vector<SIGNATURE_Forme> & tab, int tailleMin)
+{
+	for (int num = 1; num <= this->lireNbRegions(); num++)
+	{
+		// Get the size of the component
+		int size = tab[num].surface;
+
+		// If the size is less than the minimum size, remove the component
+		if (size < tailleMin)
+		{
+			supprComposante(num);
+		}
+	}
+}

@@ -275,16 +275,16 @@ CImageNdg & CImageNdg::operator=(const CImageNdg & im)
 
 _EXPORT_ CImageNdg & CImageNdg::operator-(const CImageNdg & im)
 {
-	if ((&im == this) || (im.lireHauteur() != this->lireHauteur()) || (im.lireLargeur() != this->lireLargeur()))
-	{
-		throw std::string("ERREUR : Operation impossible entre ces 2 images !");
-		return *this;
-	}
+    if ((&im == this) || (im.lireHauteur() != this->lireHauteur()) || (im.lireLargeur() != this->lireLargeur()))
+    {
+        throw std::string("ERREUR : Operation impossible entre ces 2 images !");
+        return *this;
+    }
 
-	for (int i = 0; i < this->lireNbPixels(); i++)
-		this->operator()(i) = this->operator()(i) - im(i);
+    for (int i = 0; i < this->lireNbPixels(); i++)
+        this->operator()(i) = this->operator()(i) - im(i);
 
-	return *this;
+    return *this;
 }
 
 // fonctionnalit�s histogramme
@@ -407,10 +407,49 @@ CImageNdg & CImageNdg::operation(const CImageNdg & im, const std::string methode
     return *this;
 }
 
-// _EXPORT_ CImageNdg &CImageNdg::score(const CImageNdg &im, const std::string methode)
-// {
+_EXPORT_ double CImageNdg::score(const CImageNdg &im, const std::string methode)
+{
+	if ((&im == this) || !(this->lireBinaire() && im.lireBinaire()))
+	{
+		throw std::string("Operation logique uniquement possible entre 2 images binaires");
+        return 0;
+    }
 
-// }
+    if (methode.compare("iou") == 0)
+	{
+		int intersection = 0;
+		int un = 0;
+		for (int i = 0; i < this->lireNbPixels(); i++)
+		{
+			if (this->operator()(i) && im(i))
+				intersection++;
+			if (this->operator()(i) || im(i))
+				un++;
+		}
+		return (double)intersection / (double)un;
+	}
+	else if (methode.compare("dice") == 0)
+	{
+		int intersection = 0;
+		int somme = 0;
+		for (int i = 0; i < this->lireNbPixels(); i++)
+		{
+			if (this->operator()(i) && im(i))
+				intersection++;
+			if (this->operator()(i) || im(i))
+				somme++;
+		}
+		return (double)(2 * intersection) / (double)somme;
+	}
+	else
+	{
+		throw std::string("Methode non reconnue");
+		return -1;
+	
+	}
+
+	return 0;
+}
 
 // seuillage
 CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seuilHaut)
@@ -1322,35 +1361,76 @@ _EXPORT_ CImageNdg CImageNdg::sobel()
         imgSobel(lireHauteur() - 1, j) = 0;
     }
 
-    // Sobel operator
+    // Sobel kernels
     int Gx[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
-
     int Gy[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
 
+    // Apply Sobel filter
     for (int i = 1; i < lireHauteur() - 1; i++)
     {
         for (int j = 1; j < lireLargeur() - 1; j++)
         {
             int sumX = 0;
             int sumY = 0;
-
             for (int k = -1; k <= 1; k++)
             {
                 for (int l = -1; l <= 1; l++)
                 {
-                    sumX += operator()(i + k, j + l) * Gx[k + 1][l + 1];
-                    sumY += operator()(i + k, j + l) * Gy[k + 1][l + 1];
+                    int pixel = operator()(i + k, j + l);
+                    sumX += pixel * Gx[k + 1][l + 1];
+                    sumY += pixel * Gy[k + 1][l + 1];
                 }
             }
-
-            // Calculate the magnitude of gradients
-            int sum        = static_cast<int>(sqrt(sumX * sumX + sumY * sumY));
-            // Clamp the value to the 0-255 range
-            imgSobel(i, j) = std::min(std::max(sum, 0), 255);
+            int magnitude  = static_cast<int>(sqrt(sumX * sumX + sumY * sumY));
+            imgSobel(i, j) = std::min(std::max(magnitude, 0), 255);
         }
     }
 
     return imgSobel;
+}
+
+_EXPORT_ CImageNdg CImageNdg::prewitt()
+{
+    CImageNdg imgPrewitt(lireHauteur(), lireLargeur());
+
+    // Initialize borders to zero
+    for (int i = 0; i < lireHauteur(); i++)
+    {
+        imgPrewitt(i, 0)                 = 0;
+        imgPrewitt(i, lireLargeur() - 1) = 0;
+    }
+    for (int j = 0; j < lireLargeur(); j++)
+    {
+        imgPrewitt(0, j)                 = 0;
+        imgPrewitt(lireHauteur() - 1, j) = 0;
+    }
+
+    // Prewitt kernels
+    int Gx[3][3] = {{-1, 0, 1}, {-1, 0, 1}, {-1, 0, 1}};
+    int Gy[3][3] = {{-1, -1, -1}, {0, 0, 0}, {1, 1, 1}};
+
+    // Apply Prewitt filter
+    for (int i = 1; i < lireHauteur() - 1; i++)
+    {
+        for (int j = 1; j < lireLargeur() - 1; j++)
+        {
+            int sumX = 0;
+            int sumY = 0;
+            for (int k = -1; k <= 1; k++)
+            {
+                for (int l = -1; l <= 1; l++)
+                {
+                    int pixel = operator()(i + k, j + l);
+                    sumX += pixel * Gx[k + 1][l + 1];
+                    sumY += pixel * Gy[k + 1][l + 1];
+                }
+            }
+            int magnitude    = static_cast<int>(sqrt(sumX * sumX + sumY * sumY));
+            imgPrewitt(i, j) = std::min(std::max(magnitude, 0), 255);
+        }
+    }
+
+    return imgPrewitt;
 }
 
 _EXPORT_ CImageNdg CImageNdg::invert()
@@ -1368,11 +1448,13 @@ _EXPORT_ CImageNdg CImageNdg::invert()
     return imgInvert;
 }
 
+#include "ImageClasse.hpp"
+
 _EXPORT_ CImageNdg CImageNdg::process()
 {
     CImageNdg tmp = *this;
 
-    std::cout << "Processing image " << tmp.lireNom() << std::endl;
+    // std::cout << "Processing image " << tmp.lireNom() << std::endl;
 
     // Invert the image if its name starts with "In"
     if (tmp.lireNom().find("In") == 0)
@@ -1381,13 +1463,19 @@ _EXPORT_ CImageNdg CImageNdg::process()
     }
 
     // First step, we apply a gaussian filter to the image
-    CImageNdg imgFiltered = tmp.filtrage("median", 5, 5);
+    CImageNdg imgFiltered    = tmp.filtrage("median", 7, 7);
 
-	// Contours detection, sobel operator
-	CImageNdg imgSobel    = imgFiltered.sobel();
+    // Contours detection, sobel operator
+    CImageNdg imgSobel       = imgFiltered.prewitt();
 
-	// Thresholding
-	CImageNdg imgThresholded = imgSobel.seuillage("otsu");
+    // Thresholding
+    CImageNdg imgThresholded = imgSobel.seuillage("otsu");
 
-    return imgThresholded;
+    // Dilatation
+    imgThresholded           = imgThresholded.morphologie("erosion", "V4");
+    imgThresholded           = imgThresholded.morphologie("dilatation", "V8");
+
+    CImageNdg imgFinal(imgThresholded);
+
+    return imgFinal;
 }

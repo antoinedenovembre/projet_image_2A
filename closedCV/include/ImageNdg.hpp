@@ -287,7 +287,7 @@ public:
     _EXPORT_ CImageNdg & operation(const CImageNdg & im, const std::string methode = "et");
 
     // Score
-    // _EXPORT_ CImageNdg& score(const CImageNdg& im, const std::string methode = "iou");
+    _EXPORT_ double score(const CImageNdg& im, const std::string methode = "iou");
 
     // seuillage
     // options : "manuel", "otsu"
@@ -316,6 +316,7 @@ public:
     _EXPORT_ CImageNdg verticalConcatenate(const CImageNdg & im);
 
     _EXPORT_ CImageNdg sobel();
+    _EXPORT_ CImageNdg prewitt();
     _EXPORT_ CImageNdg invert();
 
     // Image processing algorithm for the project

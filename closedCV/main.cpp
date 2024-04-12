@@ -29,6 +29,9 @@ int main(void)
     std::string testFolderPath = folderPath + "/test";
     std::string gtFolderPath   = folderPath + "/gt";
 
+	double somme = 0;
+	int count = 0;
+
     try
     {
         // Get filenames from the test folder
@@ -38,8 +41,7 @@ int main(void)
         for (const std::string & filename : testImages)
         {
             std::string testImagePath = testFolderPath + "/" + filename;
-            std::string gtFilename =
-                filename.substr(0, filename.find_last_of(".")) + ".png"; // Change extension to .png
+			std::string gtFilename = filename.substr(0, filename.find_last_of(".")) + ".png"; // Change extension to .png
             std::string gtImagePath = gtFolderPath + "/" + gtFilename;
 
             // Load the test image
@@ -52,11 +54,12 @@ int main(void)
             CImageNdg processedImage = testImage.process();
 
             // Compare the processed image with the ground truth image
-            // TO BE IMPLEMENTED
 
             // Save the processed image
             processedImage.sauvegarde("processed_" + filename);
         }
+
+		std::cout << "Moyenne : " << somme / count << std::endl;
     }
     catch (const fs::filesystem_error & e)
     {

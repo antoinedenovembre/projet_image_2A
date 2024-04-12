@@ -194,6 +194,9 @@ public:
     _EXPORT_ void circleInEachComponent(const std::vector<SIGNATURE_Forme> & tab);
     _EXPORT_ bool isEdgePixel(int i, int j, int num);
     _EXPORT_ void drawCircle(int p_cx, int p_cy, int p_radius, int p_color);
+
+    _EXPORT_ void supprComposante(int num);
+    _EXPORT_ void supprComposantesTaille(const std::vector<SIGNATURE_Forme> & tab, int tailleMin);
 };
 
 #endif
