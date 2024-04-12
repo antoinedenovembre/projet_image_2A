@@ -1,30 +1,44 @@
-#include <iostream>
 #include <cmath>
-#include <ctime> // pour srand
+#include <iostream>
 #include <vector>
 
-#include "ImageNdg.hpp"
+#include "ImageClasse.hpp"
 #include "ImageCouleur.hpp"
 #include "ImageDouble.hpp"
-#include "ImageClasse.hpp" // segmentation (seuillage + etiquetage ou ND) et signatures
+#include "ImageNdg.hpp"
 
-int main(void) 
+int main(void)
 {
-	try
-	{
-		// CImageNdg tst{"data/test/In_1.bmp"};
-		CImageNdg tst{"data/test/Sc_1.bmp"};
+    try
+    {
+        CImageNdg cells{"img/amas.bmp"};
 
-		CImageDouble imgDoubleSeuil(tst);
-		CImageNdg imgContours = imgDoubleSeuil.vecteurGradient("norme").toNdg();
-		imgContours = imgContours.seuillage();
+        cells = cells.seuillage();
 
-		// imgContours = imgContours.dilatation();
-	
-		imgContours.sauvegarde("grad.bmp");
-	}
-	catch (const std::string& chaine) 
-	{
-		std::cerr << chaine << std::endl;
-	}
+		cells.sauvegarde("seuillage");
+		
+		CImageClasse cellsClasse{cells, "V8"};
+
+        CImageClasse voronoi = cellsClasse.voronoi();
+
+        voronoi.sauvegarde("voronoi");
+
+        /*
+		CImageNdg cells{"img/cellules.bmp"};
+
+        CImageClasse cellsClasse{cells.seuillage(), "V8"};
+
+        cellsClasse.sauvegarde("classeCells");
+
+        std::vector<SIGNATURE_Forme> sigs = cellsClasse.sigComposantesConnexes();
+
+        cellsClasse.circleInEachComponent(sigs);
+
+        cellsClasse.sauvegarde("classeCellsCircles");
+        */
+    }
+    catch (const std::string & chaine)
+    {
+        std::cerr << chaine << std::endl;
+    }
 }

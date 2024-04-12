@@ -1,0 +1,2 @@
+/Library/Developer/CommandLineTools/usr/bin/ar qc libclosedCV.a CMakeFiles/closedCV.dir/source/ImageCouleur.cpp.o CMakeFiles/closedCV.dir/source/ImageNdg.cpp.o CMakeFiles/closedCV.dir/source/ImageDouble.cpp.o CMakeFiles/closedCV.dir/source/ImageClasse.cpp.o
+/Library/Developer/CommandLineTools/usr/bin/ranlib libclosedCV.a
