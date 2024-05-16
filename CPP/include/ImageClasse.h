@@ -16,12 +16,14 @@
 #define EUCLIDEAN(a,b) ((a-b) * (a-b)) 
 #define MAX_ITER 100
 
-typedef struct  {
+typedef struct  
+{
 	float  moyenne;
 	int    surface;
 } SIGNATURE_Ndg;
 
-typedef struct  {
+typedef struct 
+{
 	float  moyenne[3];
 	int    surface;
 } SIGNATURE_Couleur;
@@ -34,8 +36,8 @@ typedef struct {
 	int			premierPt_i; // premier point rencontré sens de parcours avant
 	int			premierPt_j;
 	int			rectEnglob_Hi; // coins supérieur gauche et inférieur droit
-	int			rectEnglob_Hj;
-	int			rectEnglob_Bi;
+	int			rectEnglob_Hj; // coins supérieur gauche et inférieur droit
+	int			rectEnglob_Bi; //
 	int			rectEnglob_Bj;
 	float		perimetre; // au sens V8
 	double lambda1; // + grande valeur propre
@@ -48,7 +50,8 @@ typedef struct {
 
 // définition classe Image Classe --> images étiquetées pour analyse objets, nuées dynamiques pour analyse régions
 
-class CImageClasse {
+class CImageClasse 
+{
 
 	///////////////////////////////////////
 	private : 
@@ -74,6 +77,11 @@ class CImageClasse {
 		_declspec(dllexport) CImageClasse(const CImageClasse& in, std::string misAJour = "sans", std::string voisinage = "V8"); // re-étiquetage éventuel
 		_declspec(dllexport) CImageClasse(const CImageNdg& im, int nbClusters = 2, std::string choix = "aleatoire"); // clustering 
 		_declspec(dllexport) CImageClasse(const CImageCouleur& im, int nbClusters = 2, std::string choix = "aleatoire", std::string espace = "hsv", int plan = 0);
+			// clustering (methode des k means) applique a un seul canal de couleur specifique d'une image couleur
+			// segmentation d'image basee sur la couleur dans l'espae choisi, permettant une reduction des couleurs basee 
+			// sur l'agrégation des pixels en un nombre specifie de clusters representatifs
+		
+
 
 		_declspec(dllexport) CImageClasse(const CImageNdg& im, std::vector<unsigned char>* germes = NULL); // clustering contraint, germes a priori
 
@@ -148,8 +156,15 @@ class CImageClasse {
 		// signatures forme pour Image_Ndg et Image_Couleur
 		_declspec(dllexport) std::vector<SIGNATURE_Forme> sigComposantesConnexes(bool enregistrementCSV = false);
 
+		// cercle composante connexe
+		_declspec(dllexport) void cercleparcomposante(const std::vector<SIGNATURE_Forme>& tab);
+		_declspec(dllexport) void tracercercle(int p_cx, int p_cy, int p_radius, int p_color);
+
 		// morphologie
 		_declspec(dllexport) CImageClasse morphologie(const std::string& methode = "erosion", const std::string& eltStructurant = "V8");
+
+		_declspec(dllexport) CImageClasse voronoi();
+
 
 		//_declspec(dllexport) CImageClasse voronoi(const std::string& eltStructurant = "V8");
 };

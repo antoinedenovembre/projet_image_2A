@@ -8,12 +8,13 @@
 
 #include "ImageClasse.h"
 
+#define PI 3.14159265358979323846
 
 #define MAGIC_NUMBER_BMP ('B'+('M'<<8)) // signature bitmap windows
 
 // constructeurs et destructeur
-CImageClasse::CImageClasse() {
-
+CImageClasse::CImageClasse() 
+{
 	this->m_iHauteur   = 0;
 	this->m_iLargeur   = 0;
 	this->m_sNom       = "vide";
@@ -21,7 +22,8 @@ CImageClasse::CImageClasse() {
 	this->m_pucPixel   = NULL;
 }
 
-CImageClasse::CImageClasse(int hauteur, int largeur) {
+CImageClasse::CImageClasse(int hauteur, int largeur) // créer une image vide de taille choisie par l'utilisateur avec que des 0
+{
 
 	this->m_iHauteur   = hauteur;
 	this->m_iLargeur   = largeur;
@@ -192,6 +194,14 @@ CImageClasse::CImageClasse(const CImageNdg& im, std::string choix) {
 
 	m_lNbRegions = compt-1;
 }
+//initialise une image de classe à partir d'une image de classe
+//instanciation d'une image legerement plus grande pour eviter les pbs de bord
+//copie de l'image originale dans l'image plus grande (avec décalage de 1)
+//tableau de label
+//algo de segmentation, pixels adjacents
+//enregistrement des labels dans un tableau
+
+
 
 CImageClasse::CImageClasse(const CImageClasse& in, std::string miseAJour, std::string voisinage) {
 
@@ -252,6 +262,11 @@ CImageClasse::CImageClasse(const CImageClasse& in, std::string miseAJour, std::s
 		}
 	}
 }
+//si paramètre maj est "sans": copie simple
+//sinon, on regarde si il y a un fond à 0
+  //si objet fond a true: on crée une image ndg avec 1 pour les objets et 0 pour le fond
+
+
 
 CImageClasse::CImageClasse(const CImageNdg& im, int nbClusters, std::string choix) {
 
@@ -390,6 +405,11 @@ CImageClasse::CImageClasse(const CImageNdg& im, int nbClusters, std::string choi
 	for (int i=0; i < this->lireNbPixels(); i++) 
 		this->operator()(i) = lut[im(i)]; 
 }
+//segmentation de l'image en nbClusters classes sur une image ndg
+//le résultat est une image ou chaque pixel est remplace par le label du cluster
+//auquel il a ete assigne
+
+
 
 CImageClasse::CImageClasse(const CImageCouleur& im, int nbClusters, std::string choix, std::string espace, int plan) {
 
@@ -536,6 +556,14 @@ CImageClasse::CImageClasse(const CImageCouleur& im, int nbClusters, std::string 
 	for (int i=0; i < this->lireNbPixels(); i++) 
 		this->operator()(i) = lut[hsv(i)[plan]]; 
 }
+//choix des germes de maniere aleatoire ou reguliere
+//on calcule la moyenne et l'histogramme
+//a travers plusieurs iterations, on calcule le centre de gravite de chaque classe
+//chaque pixel est classe dans la classe la plus proche en terme de distance euclidienne
+//par rapport aux centres de gravite actuels des classes
+//apres chaque iteration, on recalcule les centres de gravite
+
+
 
 CImageClasse::CImageClasse(const CImageNdg& im, std::vector<unsigned char>* germes)
 // germes doivent correspondre à une véritable information, notament sur [min max] -> pas de vérif ici
@@ -642,6 +670,12 @@ CImageClasse::CImageClasse(const CImageNdg& im, std::vector<unsigned char>* germ
 	for (int i = 0; i < this->lireNbPixels(); i++)
 		this->operator()(i) = lut[im(i)];
 }
+//prend une image en ndg et un vecteur de germes
+//(valeurs initiales pour la classification)
+//histogramme, calcul de la moyenne, initialisation des centres de gravite
+
+
+
 
 CImageClasse::~CImageClasse() 
 {
@@ -653,7 +687,9 @@ CImageClasse::~CImageClasse()
 	}
 }
 
-void CImageClasse::sauvegarde(const std::string& file) {
+
+void CImageClasse::sauvegarde(const std::string& file) 
+{
 	std::string nomFichier = "";
 
 	if (file.empty())
@@ -701,7 +737,8 @@ std::vector<SIGNATURE_Ndg> CImageClasse::signatures(const CImageNdg& img, bool e
 
 	std::vector<SIGNATURE_Ndg> tab;
 
-	if (this->lireNbRegions() > 0) {
+	if (this->lireNbRegions() > 0) 
+	{
 		tab.resize(this->lireNbRegions()+1); // gestion du fond éventuel, cas des objets, vide si nuées dynamiques
 		
 		for (int k=0;k<(int)tab.size();k++) {
@@ -738,6 +775,10 @@ std::vector<SIGNATURE_Ndg> CImageClasse::signatures(const CImageNdg& img, bool e
 
 	return tab;
 }
+//cette méthode retourne un vecteur de statistiques 
+//de chaque region de l'image ndg
+
+
 
 std::vector<SIGNATURE_Couleur> CImageClasse::signatures(const CImageCouleur& img, bool enregistrementCSV) {
 
@@ -785,21 +826,28 @@ std::vector<SIGNATURE_Couleur> CImageClasse::signatures(const CImageCouleur& img
 
 	return tab;
 }
+//cette méthode retourne un vecteur de statistiques
+//de chaque region de l'image couleur
+
+
 
 // propage couleur moyenne à chaque région, fond restant à 0 ou pas 
-CImageCouleur CImageClasse::affichageMoyenne(const CImageCouleur& img, bool fondAPart) {
+CImageCouleur CImageClasse::affichageMoyenne(const CImageCouleur& img, bool fondAPart) 
+{
 	CImageCouleur out(this->lireHauteur(),this->lireLargeur(),0,0,0);
 	out.ecrireNom(this->lireNom() + "_Moyenne");
 
 	std::vector<SIGNATURE_Couleur> tab = this->signatures(img, false);
-
+	// la methode signature est appelle pour calculer les moyennes de couleur pour chaque region
+	//de l'image source
 
 	if (!fondAPart) {
-		for (int i = 0; i < this->lireNbPixels(); i++) {
+		for (int i = 0; i < this->lireNbPixels(); i++) 
+		{
 			out(i)[0] = (int)tab[this->operator()(i)].moyenne[0];
 			out(i)[1] = (int)tab[this->operator()(i)].moyenne[1];
 			out(i)[2] = (int)tab[this->operator()(i)].moyenne[2];
-		}
+		}//tous les pixels meme ceux du fond recoivent la couleur moyenne de leur region
 	}
 	else {
 		for (int i = 0; i < this->lireNbPixels(); i++)
@@ -808,13 +856,16 @@ CImageCouleur CImageClasse::affichageMoyenne(const CImageCouleur& img, bool fond
 				out(i)[0] = (int)tab[this->operator()(i)].moyenne[0];
 				out(i)[1] = (int)tab[this->operator()(i)].moyenne[1];
 				out(i)[2] = (int)tab[this->operator()(i)].moyenne[2];
-			}
+			}//seuls les pixels des regions recoivent la couleur moyenne de leur region
 	}
 
 	return out;
 }
 
-CImageNdg CImageClasse::affichageMoyenne(const CImageNdg& img, bool fondAPart) {
+
+
+CImageNdg CImageClasse::affichageMoyenne(const CImageNdg& img, bool fondAPart) 
+{
 	CImageNdg out(this->lireHauteur(), this->lireLargeur(), 0);
 	out.choixPalette("grise");
 	out.ecrireNom(this->lireNom() + "_Moyenne");
@@ -836,12 +887,13 @@ CImageNdg CImageClasse::affichageMoyenne(const CImageNdg& img, bool fondAPart) {
 }
 
 // filtrage selon critères comme taille
-CImageClasse CImageClasse::filtrage(const std::string& methode, int taille, bool miseAJour) 
+CImageClasse CImageClasse::filtrage(const std::string& methode, int taille, bool miseAJour)
 {
-	CImageClasse out(this->lireHauteur(),this->lireLargeur());
-	out.ecrireNbRegions(this->lireNbRegions());
 
-	if (methode.compare("taille") == 0) 
+	CImageClasse out(this->lireHauteur(), this->lireLargeur()); //servira pour le résultat
+	out.ecrireNbRegions(this->lireNbRegions());//initialisation du nombre de régions
+
+	if (methode.compare("taille") == 0)
 	{
 		std::stringstream convert;
 		convert << taille;
@@ -857,14 +909,15 @@ CImageClasse CImageClasse::filtrage(const std::string& methode, int taille, bool
 		lut.resize(this->lireNbRegions() + 1);
 
 		for (int k = 0; k < (int)lut.size(); k++)
-			lut[k] = (surface[k] >(unsigned long)taille) ? k : 0;
+			lut[k] = (surface[k] > (unsigned long)taille) ? k : 0;
 
-		if (!miseAJour) 
+		if (!miseAJour)
 		{
 			for (int i = 0; i < this->lireNbPixels(); i++)
 				out(i) = lut[this->operator()(i)];
 		}
-		else {
+		else
+		{
 			std::vector<unsigned long> renumerotation;
 			renumerotation.resize(out.lireNbRegions() + 1, 0);
 
@@ -878,9 +931,57 @@ CImageClasse CImageClasse::filtrage(const std::string& methode, int taille, bool
 				out(i) = renumerotation[this->operator()(i)];
 		}
 	}
+	else if (methode.compare("bords") == 0)
+	{
+		std::stringstream convert;
+		convert << taille;
+		out.ecrireNom(this->lireNom() + "_Bord_" + convert.str());
 
+		// Calcul des bords, on assigne a un numero de composante connexe la valeur 1 si elle est un bord
+		std::vector<unsigned long> bord;
+		bord.resize(this->lireNbRegions() + 1, 0);
+
+		for (int j = 0; j < this->lireLargeur(); j++)
+		{
+			bord[this->operator()(0, j)] = 1; // Haut
+			bord[this->operator()(this->lireHauteur() - 1, j)] = 1; // Bas
+		}
+		for (int i = 0; i < this->lireHauteur(); i++)
+		{
+			bord[this->operator()(i, 0)] = 1; // Gauche
+			bord[this->operator()(i, this->lireLargeur() - 1)] = 1; // Droite
+		}
+
+		std::vector<unsigned long> lut;
+		lut.resize(this->lireNbRegions() + 1);
+		for (int k = 0; k < (int)lut.size(); k++)
+			// On parcourt la liste des bords, si une composante est à 1, elle est un bord et donc on met a jour la
+			// valeur de la classe dans la lut
+			lut[k] = (bord[k] != 1) ? k : 0;
+
+		if (!miseAJour)
+		{
+			for (int i = 0; i < this->lireNbPixels(); i++)
+				out(i) = lut[this->operator()(i)];
+		}
+		else
+		{
+			std::vector<unsigned long> renumerotation;
+			renumerotation.resize(out.lireNbRegions() + 1, 0);
+
+			int valEnCours = 1;
+			for (int k = 0; k < (int)lut.size(); k++)
+				if (lut[k])
+					renumerotation[k] = valEnCours++;
+			out.ecrireNbRegions(valEnCours - 1);
+
+			for (int i = 0; i < out.lireNbPixels(); i++)
+				out(i) = renumerotation[this->operator()(i)];
+		}
+	}
 	return out;
 }
+
 
 
 
@@ -893,7 +994,8 @@ std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistr
 	if (this->lireNbRegions() > 0) {
 		tab.resize(this->lireNbRegions()+1); // gestion de l'"objet" fond
 
-		for (int k=0;k<(int)tab.size();k++) {
+		for (int k=0;k<(int)tab.size();k++) 
+		{
 			tab[k].centreGravite_i = 0;
 			tab[k].centreGravite_j = 0;
 			tab[k].surface = 0;
@@ -1068,12 +1170,15 @@ std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistr
 
 		// ACP
 
-		for (int num = 1; num <= this->lireNbRegions(); num++) 
-		{ // optimisable sans souci avec un seul parcours plut t que num
+		for (int num = 1; num <= this->lireNbRegions(); num++)    //parcours des composantes connexes de l'image
+		{ // optimisable sans souci avec un seul parcours plutot que num
 			double somme_x, somme_y, somme_x2, somme_y2, somme_xy, n;
 
 			double* x = (double*)calloc(tab[num].surface, sizeof(double));
 			double* y = (double*)calloc(tab[num].surface, sizeof(double));
+			//pour chaque region, deux tableaux dynamiques x et y sont alloues
+			//pour stocker les coordonnes x et y des pixels qui appartiennent a la region
+
 			int nb = 0;
 
 			somme_x = 0.;
@@ -1085,28 +1190,31 @@ std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistr
 
 			for (int i = tab[num].rectEnglob_Hi; i <= tab[num].rectEnglob_Bi; i++)
 				for (int j = tab[num].rectEnglob_Hj; j <= tab[num].rectEnglob_Bj; j++)
-					if (this->operator()(i, j) == num) {
-						x[nb] = i;
-						y[nb] = j;
+					if (this->operator()(i, j) == num) 
+					//pour chaque pixel de la region, on stocke ses coordonnes dans les tableaux x et y
+					{
+						x[nb] = i;//stockage des coordonnees x du pixel
+						y[nb] = j;//stockage des coordonnees y du pixel
 						somme_x += x[nb];
 						somme_y += y[nb];
-						somme_x2 += x[nb] * x[nb];
-						somme_y2 += y[nb] * y[nb];
-						somme_xy += x[nb] * y[nb];
+						somme_x2 += x[nb] * x[nb];//calcul de la somme des x^2
+						somme_y2 += y[nb] * y[nb];//calcul de la somme des y^2
+						somme_xy += x[nb] * y[nb];//calcul de la somme des x*y
 						nb += 1;
 						n += 1;
+						//ces valeurs vont etre utilisees pour calculer la matrice de covariance
 					}
 
 			free(x); /* vigilance en C */
 			free(y);
 
-			somme_x /= n;
+			somme_x /= n;//sommes collectees sont divisees par le nombre de pixels de la region
 			somme_y /= n;
 			somme_x2 /= n;
 			somme_y2 /= n;
 			somme_xy /= n;
 
-			double COVxx = somme_x2 - somme_x * somme_x;
+			double COVxx = somme_x2 - somme_x * somme_x; //sigma carree
 			double COVyy = somme_y2 - somme_y * somme_y;
 			double COVxy = somme_xy - somme_x * somme_y;
 
@@ -1114,15 +1222,18 @@ std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistr
 			// | a b |   | COVxx COVxy |
 			// | c d | = | COVxy COVyy |
 			double a = COVxx, b = COVxy, c = COVxy, d = COVyy;
+			
 
-			double T = a + d;
-			double Det = a * d - b * c;
+
+			double T = a + d; // trace de la matrice de covariance
+			double Det = a * d - b * c; // determinant de la matrice de covariance
+
 
 			// valeurs propres L1,L2 = racines du polynome caracteristique
 			double sqrtt = std::sqrt(T * T - 4 * Det);
-			double L1 = 0.5 * (T + sqrtt);
-			double L2 = 0.5 * (T - sqrtt);
-
+			double L1 = 0.5 * (T + sqrtt); //valeur propre la plus grande
+			double L2 = 0.5 * (T - sqrtt); //valeur propre la plus petite
+			
 			// vecteurs propres => A.v = L.v, soit: 
 			// (a-L).vx + b.vy = 0
 			//     c.vx + (d-L).vy = 0
@@ -1166,6 +1277,77 @@ std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistr
 
 	return tab;
 }
+
+
+void CImageClasse::cercleparcomposante(const std::vector<SIGNATURE_Forme>& tab)
+{
+	const int circleColor = this->lireNbRegions() + 1;
+	double increment_teta = PI / 360;
+
+	for (int num = 1; num <= this->lireNbRegions(); num++)
+	{
+		int centerX = static_cast<int>(tab[num].centreGravite_i);
+		int centerY = static_cast<int>(tab[num].centreGravite_j);
+
+		double rayonmax = 0;
+		double rayonmin = std::numeric_limits<double>::max();
+
+		for (int i = tab[num].rectEnglob_Hi; i <= tab[num].rectEnglob_Bi; i++)
+		{
+			for (int j = tab[num].rectEnglob_Hj; j <= tab[num].rectEnglob_Bj; j++)
+			{
+				if (this->operator()(i, j) == static_cast<unsigned long>(num))
+				{
+					
+					bool estce_contour = false;
+					for (int dx = -1; !estce_contour && dx <= 1; dx++)
+					{
+						for (int dy = -1; dy <= 1; dy++)
+						{
+							int ni = i + dx;
+							int nj = j + dy;
+
+							if ((ni >= 0 && ni < this->m_iHauteur && nj >= 0 && nj < this->m_iLargeur) &&
+								(this->operator()(ni, nj) != static_cast<unsigned long>(num)))
+							{
+								estce_contour = true;
+								break;
+							}
+						}
+					}
+
+					if (estce_contour)
+					{
+						double distance = sqrt(pow(i - centerX, 2) + pow(j - centerY, 2));
+						rayonmax = std::max(rayonmax, distance);
+						rayonmin = std::min(rayonmin, distance);
+					}
+				}
+			}
+		}
+
+		tracercercle(centerX, centerY, static_cast<int>(rayonmin), circleColor);
+		tracercercle(centerX, centerY, static_cast<int>(rayonmax), circleColor);
+	}
+}
+
+void CImageClasse::tracercercle(int p_cx, int p_cy, int p_rad, int p_color)
+{
+	const double increment_teta = PI / 180;
+
+	for (double theta = 0; theta < 2 * PI; theta += increment_teta)
+	{
+		int x = p_cx + p_rad * cos(theta);
+		int y = p_cy + p_rad * sin(theta);
+
+		if (x >= 0 && x < this->m_iHauteur && y >= 0 && y < this->m_iLargeur)
+		{
+			this->operator()(x, y) = p_color;
+		}
+	}
+}
+
+
 
 // morphologie 
 CImageClasse CImageClasse::morphologie(const std::string& methode, const std::string& eltStructurant)
@@ -1271,10 +1453,108 @@ CImageClasse CImageClasse::morphologie(const std::string& methode, const std::st
 	return out;
 }
 
-//CImageClasse CImageClasse::voronoi(const std::string& eltStructurant = "V8")
-//{
+// cellules de Voronoi
+CImageClasse CImageClasse::voronoi()
+{
+	CImageClasse Res(this->lireHauteur() + 2, this->lireLargeur() + 2); // image agrandie pour gestion des bords
+	CImageClasse Res1(this->lireHauteur() + 2, this->lireLargeur() + 2); // image agrandie pour gestion des bords
 
-	//CImageNdg out(this->lireHauteur(), this->lireLargeur());
-	//CImageClasse out(this->lireHauteur(), this->lireLargeur());
+	int pix;
 
-//}
+	for (pix = 0; pix < Res.lireLargeur(); pix++) 
+	{
+		Res(0, pix) = 0;
+		Res(Res.lireHauteur() - 1, pix) = 0;
+	}
+	for (pix = 1; pix < Res.lireHauteur() - 1; pix++) 
+	{
+		Res(pix, 0) = 0;
+		Res(pix, Res.lireLargeur() - 1) = 0;
+	}
+
+	// gestion du coeur
+	for (int i = 0; i < this->lireHauteur(); i++)
+		for (int j = 0; j < this->lireLargeur(); j++) 
+		{
+			Res(i + 1, j + 1) = this->operator()(i, j);
+		} 
+	// copie de l'image dans l'image agrandie, on décale les pixels de 1 vers la droite et 1 vers le bas
+
+
+	// deuxieme image
+	for (pix = 0; pix < Res1.lireLargeur(); pix++) 
+	{
+		Res1(0, pix) = 0;
+		Res1(Res1.lireHauteur() - 1, pix) = 0;
+	}
+	for (pix = 1; pix < Res1.lireHauteur() - 1; pix++) 
+	{
+		Res1(pix, 0) = 0;
+		Res1(pix, Res1.lireLargeur() - 1) = 0;
+	}
+
+	// gestion du coeur
+	for (int i = 0; i < this->lireHauteur(); i++)
+		for (int j = 0; j < this->lireLargeur(); j++) 
+		{
+			Res1(i + 1, j + 1) = this->operator()(i, j);
+		}
+
+	int c = 1;
+
+	while (c != 0)
+	{
+		c = 0;
+		for (int i = 1; i < Res.lireHauteur() - 1; i++)
+			for (int j = 1; j < Res.lireLargeur() - 1; j++)
+			{
+				if (Res(i, j) != 0)
+				{
+					if (Res(i - 1, j - 1) == 0)
+					{
+						Res1(i - 1, j - 1) = Res(i, j);
+						c++;
+					}
+					if (Res(i - 1, j) == 0)
+					{
+						Res1(i - 1, j) = Res(i, j);
+						c++;
+					}
+					if (Res(i - 1, j + 1) == 0)
+					{
+						Res1(i - 1, j + 1) = Res(i, j);
+						c++;
+					}
+					if (Res(i, j - 1) == 0)
+					{
+						Res1(i, j - 1) = Res(i, j);
+						c++;
+					}
+					if (Res(i, j + 1) == 0)
+					{
+						Res1(i, j + 1) = Res(i, j);
+						c++;
+					}
+					if (Res(i + 1, j - 1) == 0)
+					{
+						Res1(i + 1, j - 1) = Res(i, j);
+						c++;
+					}
+					if (Res(i + 1, j) == 0)
+					{
+						Res1(i + 1, j) = Res(i, j);
+						c++;
+					}
+					if (Res(i + 1, j + 1) == 0)
+					{
+						Res1(i + 1, j + 1) = Res(i, j);
+						c++;
+					}
+				}
+			}
+		Res = Res1;
+
+	}
+
+	return Res1;
+}

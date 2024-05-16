@@ -168,7 +168,8 @@ CImageDouble& CImageDouble::operator=(const CImageDouble& im) {
 }
 
 // distance au fond
-CImageDouble CImageDouble::distance(std::string eltStructurant, double valBord) {
+CImageDouble CImageDouble::distance(std::string eltStructurant, double valBord) 
+{
 	// distance au fond
 	// gestion du bord : 0 ou autre valeur valant max des float
 
@@ -557,4 +558,425 @@ std::vector<CImageDouble> CImageDouble::pyramide(int hauteur, int tailleFiltre, 
 	}
 
 	return burt;
+}
+
+// plan Hough extraction lignes
+
+
+CImageDouble CImageDouble::maxiLocaux(int N, int M) 
+{
+
+	CImageDouble out(this->lireHauteur(), this->lireLargeur());
+
+	int ns2 = N / 2;
+	int ms2 = M / 2;
+
+	out.ecrireNom(this->lireNom() + "ML");
+	for (int i = 0; i < this->lireHauteur(); i++)
+		for (int j = 0; j < this->lireLargeur(); j++)
+			if (this->operator()(i, j) > 0) {	// test si le pixel existe i-taille/2
+				int dk = std::max(0, i - ns2);
+				int fk = std::min(i + ns2, this->lireHauteur() - 1);
+				int dl = std::max(0, j - ms2);
+				int fl = std::min(j + ms2, this->lireLargeur() - 1);
+
+				double maxVal = this->operator()(i, j);
+				bool flag = true;
+				int k = dk;
+				while ((k <= fk) && (flag == true)) {
+					int l = dl;
+					while ((l <= fl) && (flag == true)) {
+						if (this->operator()(k, l) > maxVal)
+							flag = false;
+						l++;
+					}
+					k++;
+				}
+				if (flag == true)
+					out(i, j) = 1;
+			}
+	out.m_vMax = 1;
+
+	return out;
+}
+
+typedef struct pics 
+{
+	int numero;
+	int angles;
+	int rhos;
+	int taille;
+} PICS;
+
+static bool myTri(PICS p1, PICS p2) 
+{
+	return (p1.taille > p2.taille);
+}
+
+CImageNdg CImageDouble::houghExtractionLignes(const std::string& methode, const CImageNdg& img, int N, int M, double dim, int nombre, bool enregistrementCSV) {
+	// HOUGH transform
+
+
+	int hough_h = (int)(std::max(img.lireHauteur() / 2, img.lireLargeur() / 2) * sqrt(2.0));
+	//moitiee de la diagonale de l'image
+
+	int DIAG = (int)(hough_h * 2);
+	// taille de l'image hough, permet de determiner la taille totale de l'espace des rho,
+	//de -hough_h a +hough_h
+
+
+	CImageDouble planHough(DIAG, 180);
+	// initialisation du plan hough: 180 colonnes pour les angles, DIAG lignes pour les rho
+
+	planHough.ecrireMin(0);
+	planHough.ecrireMax(0);
+
+	int cx = img.lireHauteur() / 2; //represente les coordonnees du centre de l'image
+	int cy = img.lireLargeur() / 2; 
+
+	for (int x = 0; x < img.lireHauteur(); x++)
+	{
+		for (int y = 0; y < img.lireLargeur(); y++)
+		{
+			if (img(x, y) > 0)
+			{
+				for (int t = 0; t <= 179; t++)
+				{
+					int r = (int)(((double)x - cx) * cos((double)t * (PI / 180)) + (((double)y - cy) * sin((double)t * (PI / 180)))); //r=rho*coseteta+rho*sinteta , t=teta converti en degres
+					planHough(hough_h + r, t) += 1;
+					   //accumulation: chaque calcul de r ajuste l'indice
+					   //en ajoutant 'hough_h' pour eviter les valeurs negatives
+				       //la valeur est incrementee dans planHough a l'index correspondant a la 
+					   //combinaison de r et t
+					   //cela construit l'histogramme de hough ou chaque incrementation
+					   //correspond a un point d'une ligne potentielle passant
+					   //par le pixel (x,y) dans l'image d'origine sous un angle t
+				}
+			}
+		}
+
+	}
+
+	// filtrage gaussien
+	planHough = planHough.filtrage("gaussien", 5, 1); 
+	// optionnel, utilise pour lisser l'image et donc reduire le bruit et les 
+	// faux positifs dans l'espace de Hough
+	// le 5 indice 5*5: la taille du noyau du filtre et 1 indique l'ecart type du filtre 
+
+	for (int p = 0; p < planHough.lireNbPixels(); p++)
+		if (planHough(p) > planHough.lireMax())
+			planHough.ecrireMax(planHough(p));
+	planHough.toNdg("expansion").sauvegarde("planHough");
+	//parcourt tous les pixels du plan de Hough et met a jour la valeur maxi stockee
+	//si elle trouve un pixel avec une valeur plus grande que le maximum actuel
+
+	// extraction maxi locaux
+	CImageDouble mL = planHough.maxiLocaux(N, M);
+
+	// Hough inverse
+	// creation de l'image de sortie avec les lignes detectees pour l'image de hough inverse
+	CImageNdg HI(img.lireHauteur(), img.lireLargeur(), 0);
+	HI.ecrireNom(img.lireNom() + "HI");
+	HI.choixPalette("binaire"); //pour afficher les lignes detectees en blanc
+
+	if (methode.compare("longueur") == 0) 
+	{
+		// extraction pics
+		int nbLignes = 1;
+		//initialise un compteur pour numeroter les lignes detectees
+
+		std::stack<PICS> pics;
+		//creer une pile pour stocker les structures PICS
+		//qui contiennent les informations sur les lignes detectees
+		//dans l'espace de Hough
+		//suggere que l'ordre d'extraction pourrait etre utilisé
+		//ulterieurement dans un contexte de dernier entre, premier sorti
+
+		for (int r = 0; r < DIAG; r++) //parcourt l'espace de Hough
+			for (int a = 0; a <= 179; a++)
+				if ((mL(r, a) > 0) && (planHough(r, a) >= dim))
+					//verifie si le pixel actuel est un maximum local et si
+					//sa valeur est superieure a un seuil 'dim'
+					//permet de selectionner les pics qui sont maximas locaux et assez significatifs
+										
+				{
+					//création et stockage des structures PICS
+
+					PICS pic = { 0,0,0,0 };
+					//initialise une nouvelle instance de la structure PICS
+
+					pic.numero = nbLignes; //assigne un numero unique a chaque pic detecte
+					pic.angles = a; //stocke l'angle de la ligne detectee
+					pic.rhos = r - hough_h; //stocke la distance de la ligne detectee (ajuste pour stocker la valeur autour de 0)
+					pic.taille = (int)planHough(r, a);//enregistre la taille du pic, donc l'intensite de la ligne detectee
+					pics.push(pic); //empile la structure PICS dans la pile
+					nbLignes += 1; //incremente le compteur de lignes detectees
+				}
+
+		// d pilement pics
+
+		if (enregistrementCSV) 
+		{
+			std::string fichier = "res/" + img.lireNom() + "_Pics.csv";//definit le nom du fichier CSV
+			std::ofstream f(fichier.c_str());//ouvre le fichier en ecriture
+
+			if (!f.is_open())
+				std::cout << "Impossible d'ouvrir le fichier en ecriture !" << std::endl;
+			//verifie si le fichier s'est correctement ouvert
+
+			else 
+			{
+				f << "Numero; Distance; Angle; Taille" << std::endl; //ecriture des entetes de colonnes
+				while (!pics.empty()) //tant que la pile pics n'est pas vide 
+				{
+					PICS pic = pics.top();//xtrait le dernier element de la pile
+					int label = pic.numero;//recupere le numero de la ligne detectee
+					double angle = pic.angles;//recupere l'angle de la ligne detectee
+					double rho = pic.rhos;//recupere la distance de la ligne detectee
+					int tai = pic.taille;//recupere la taille du pic, donc l'intensite de la ligne detectee
+
+					f << label << " ; " << rho << " ; " << angle << " ; " << tai << std::endl;
+					if (angle != 0)
+					{
+						for (int i = 0; i < img.lireHauteur(); i++)
+						{
+							double x = i - cx; //transformee de Hough inverse
+							int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+							int j = y + (int)cy;
+							if ((j >= 0) && (j < img.lireLargeur())) //si le pixel est dans les limites de l'image
+								HI(i, j) = label;//les pixels correspondants sont marques avec le numero de la ligne detectee
+						}
+						for (int j = 0; j < img.lireLargeur(); j++)
+						{
+							double y = j - (int)cy;
+							int x = (int)((rho - y * sin(angle * (PI / 180))) / cos(angle * (PI / 180)));
+							int i = x + (int)cx;
+							if ((i >= 0) && (i < img.lireHauteur()))
+								HI(i, j) = label;
+						}
+					}
+					else
+						if (angle != 90)
+						{
+							for (int j = 0; j < img.lireLargeur(); j++) {
+								double y = j - (int)cy;
+								int x = (int)((rho - y * sin(angle * PI / 180)) / cos(angle * PI / 180));
+								int i = x + (int)cx;
+								if ((i >= 0) && (i < img.lireHauteur()))
+									HI(i, j) = label;
+							}
+							for (int i = 0; i < img.lireHauteur(); i++)
+							{
+								double x = i - (int)cx;
+								int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+								int j = y + (int)cy;
+								if ((j >= 0) && (j < img.lireLargeur()))
+									HI(i, j) = label;
+							}
+						}
+					pics.pop();//vide la pile pics
+				}
+				f.close();//ferme le fichier
+			}
+		}
+
+
+		//ici, les lignes detectees sont affichees dans la console donc pas d'enregistrement CSV
+		else {
+			while (!pics.empty())
+			{
+				PICS pic = pics.top(); //chaque pic est extrait de la pile
+
+				int label = pic.numero;
+				double angle = pic.angles;
+				double rho = pic.rhos;
+				std::cout << label << " " << angle << " " << rho << std::endl; //les détails de chaque pic sont affichés dans la console
+
+				if (angle != 0)
+				{
+					for (int i = 0; i < img.lireHauteur(); i++)
+					{
+						double x = i - (int)cx;
+						int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+						int j = y + (int)cy;
+						if ((j >= 0) && (j < img.lireLargeur()))
+							HI(i, j) = label;
+					}
+					for (int j = 0; j < img.lireLargeur(); j++)
+					{
+						double y = j - (int)cy;
+						int x = (int)((rho - y * sin(angle * (PI / 180))) / cos(angle * (PI / 180)));
+						int i = x + (int)cx;
+						if ((i >= 0) && (i < img.lireHauteur()))
+							HI(i, j) = label;
+					}
+				}
+				else
+					if (angle != 90)
+					{
+						for (int j = 0; j < img.lireLargeur(); j++) {
+							double y = j - (int)cy;
+							int x = (int)((rho - y * sin(angle * PI / 180)) / cos(angle * PI / 180));
+							int i = x + (int)cx;
+							if ((i >= 0) && (i < img.lireHauteur()))
+								HI(i, j) = label;
+						}
+						for (int i = 0; i < img.lireHauteur(); i++)
+						{
+							double x = i - (int)cx;
+							int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+							int j = y + (int)cy;
+							if ((j >= 0) && (j < img.lireLargeur()))
+								HI(i, j) = label;
+						}
+					}
+				pics.pop();
+			}
+		}
+	}
+	else
+		if (methode.compare("nombre") == 0) {
+			// extraction pics
+			int nbLignes = 1; //initialise un compteur pour numeroter les lignes detectees
+
+			std::vector<PICS> pics; //creer un vecteur pour stocker les structures PICS detectees dans l'espace de Hough
+
+			for (int r = 0; r < DIAG; r++)
+				for (int a = 0; a <= 179; a++)
+					//parcourt l'espace de Hough
+
+					if ((mL(r, a) > 0) && (planHough(r, a) >= dim)) // base minimale pour comptabiliser une droite
+					{
+						PICS pic = { 0,0,0,0 };
+						pic.numero = nbLignes;
+						pic.angles = a;
+						pic.rhos = r - hough_h;
+						pic.taille = (int)planHough(r, a);
+						pics.push_back(pic);
+						nbLignes += 1;
+						//nouvelle strucutre PICS est creee et stockee dans le vecteur pics
+					}
+
+			int nbPics = std::min(nbLignes - 1, nombre); // si pas suffisamment de pics extrait
+						//si plus de lignes detectees que le nombre de lignes a extraire, le nombre de lignes a extraire est ajuste
+			// d pilement pics
+
+			sort(pics.begin(), pics.end(), myTri); //trie les lignes detectees par taille decroissante
+				//permet de classer les lignes en fonction de leur intensite, donc de leur taille
+
+			if (enregistrementCSV) 
+			{
+				std::string fichier = "res/" + img.lireNom() + "_Pics.csv";
+				std::ofstream f(fichier.c_str());
+
+				if (!f.is_open())
+					std::cout << "Impossible d'ouvrir le fichier en ecriture !" << std::endl;
+				else {
+					f << "Numero; Distance; Angle; Taille" << std::endl;
+					for (int p = 0; p < nbPics; p++)
+					{
+						PICS pic = pics.at(p);
+						int label = pic.numero;
+						double angle = pic.angles;
+						double rho = pic.rhos;
+						int tai = pic.taille;
+
+						f << label << " ; " << rho << " ; " << angle << " ; " << tai << std::endl;
+
+						if (angle != 0)
+						{
+							for (int i = 0; i < img.lireHauteur(); i++)
+							{
+								int x = i - cx;
+								int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+								int j = y + cy;
+								if ((j >= 0) && (j < img.lireLargeur()))
+									HI(i, j) = label;
+							}
+							for (int j = 0; j < img.lireLargeur(); j++)
+							{
+								double y = j - cy;
+								int x = (int)((rho - y * sin(angle * (PI / 180))) / cos(angle * (PI / 180)));
+								int i = x + cx;
+								if ((i >= 0) && (i < img.lireHauteur()))
+									HI(i, j) = label;
+							}
+						}
+						else
+							if (angle != 90)
+							{
+								for (int j = 0; j < img.lireLargeur(); j++) {
+									double y = j - cy;
+									int x = (int)((rho - y * sin(angle * PI / 180)) / cos(angle * PI / 180));
+									int i = x + cx;
+									if ((i >= 0) && (i < img.lireHauteur()))
+										HI(i, j) = label;
+								}
+								for (int i = 0; i < img.lireHauteur(); i++)
+								{
+									double x = i - cx;
+									int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+									int j = y + cy;
+									if ((j >= 0) && (j < img.lireLargeur()))
+										HI(i, j) = label;
+								}
+							}
+					}
+					f.close();
+				}
+			}
+			else {
+				for (int p = 0; p < nbPics; p++)
+				{
+					PICS pic = pics.at(p);
+					int label = pic.numero;
+					double angle = pic.angles;
+					double rho = pic.rhos;
+					int tai = pic.taille;
+
+					std::cout << label << " " << angle << " " << rho << " -> " << tai << std::endl;
+					if (angle != 0)
+					{
+						for (int i = 0; i < img.lireHauteur(); i++)
+						{
+							int x = i - cx;
+							int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+							int j = y + cy;
+							if ((j >= 0) && (j < img.lireLargeur()))
+								HI(i, j) = label;
+						}
+						for (int j = 0; j < img.lireLargeur(); j++)
+						{
+							int y = j - cy;
+							int x = (int)((rho - y * sin(angle * (PI / 180))) / cos(angle * (PI / 180)));
+							int i = x + cx;
+							if ((i >= 0) && (i < img.lireHauteur()))
+								HI(i, j) = label;
+						}
+					}
+					else
+						if (angle != 90)
+						{
+							for (int j = 0; j < img.lireLargeur(); j++) {
+								int y = j - cy;
+								int x = (int)((rho - y * sin(angle * PI / 180)) / cos(angle * PI / 180));
+								int i = x + cx;
+								if ((i >= 0) && (i < img.lireHauteur()))
+									HI(i, j) = label;
+							}
+							for (int i = 0; i < img.lireHauteur(); i++)
+							{
+								int x = i - cx;
+								int y = (int)((rho - x * cos(angle * (PI / 180))) / sin(angle * (PI / 180)));
+								int j = y + cy;
+								if ((j >= 0) && (j < img.lireLargeur()))
+									HI(i, j) = label;
+							}
+						}
+				}
+			}
+		}
+
+	// pas de maskage sur image binaire d'entree qui permettrait aussi de filtrer les "vraies" lignes
+	return(HI);
 }

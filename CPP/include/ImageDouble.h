@@ -116,6 +116,11 @@ class CImageDouble {
 		// pyramides
 		_declspec(dllexport) std::vector<CImageDouble> pyramide(int hauteur = 5, int tailleFiltre = 5, double sigma = 1);
 
+		// plan Hough extraction lignes
+
+		_declspec(dllexport) CImageDouble maxiLocaux(int N = 5, int M = 5);
+		_declspec(dllexport) CImageNdg houghExtractionLignes(const std::string& methode, const CImageNdg& img, int N = 5, int M = 5, double dim = 50, int nombre = 1, bool enregistrementCSV = false);
+
 };
 
 #endif 
