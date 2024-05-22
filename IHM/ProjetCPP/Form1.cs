@@ -61,7 +61,8 @@ namespace ProjetCPP
             // Mettre à jour l'image initiale
             if (indexImageInit < fichiersImageInit.Length)
             {
-                pictureBoxiinitiale.ImageLocation = fichiersImageInit[indexImageInit++];
+                pictureBoxiinitiale.ImageLocation = fichiersImageInit[indexImageInit];
+                pictureBoxiinitiale.Load();
             }
             else
             {
@@ -69,21 +70,23 @@ namespace ProjetCPP
             }
 
             Bitmap bmp = new Bitmap(pictureBoxiinitiale.Image);
+            Bitmap bmpGT = new Bitmap(pictureBoxvterrain.Image);
             ClImage Img = new ClImage();
 
             unsafe
             {
                 BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
-                Img.objetLibDataImgPtr(1, bmpData.Scan0, bmpData.Stride, bmp.Height, bmp.Width);
-                // 1 champ texte retour C++, le seuil auto
+                BitmapData bmpDataGT = bmpGT.LockBits(new Rectangle(0, 0, bmpGT.Width, bmpGT.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+                Img.objetLibDataImgPtr(1, bmpData.Scan0, bmpDataGT.Scan0, bmpData.Stride, bmp.Height, bmp.Width);
                 bmp.UnlockBits(bmpData);
+                bmpGT.UnlockBits(bmpDataGT);
             }
 
-            int seuil = (int)Img.objetLibValeurChamp(0);
+            double score = (double)Img.objetLibValeurChamp(0) * 100;
 
-            label4.Text = "Seuil auto : " + seuil;
+            label4.Text = "Score : " + score.ToString("F1");
 
-            displayVerdict();
+            displayVerdict(score);
 
             // transférer C++ vers bmp
             pictureBoxTraite.Image = bmp;
@@ -91,12 +94,16 @@ namespace ProjetCPP
             // Mettre à jour l'image de vérité terrain
             if (indexVeriteTerrain < fichiersVeriteTerrain.Length)
             {
-                pictureBoxvterrain.ImageLocation = fichiersVeriteTerrain[indexVeriteTerrain++];
+                pictureBoxvterrain.ImageLocation = fichiersVeriteTerrain[indexVeriteTerrain];
+                pictureBoxvterrain.Load();
             }
             else
             {
                 indexVeriteTerrain = 0;
             }
+
+            indexImageInit++;
+            indexVeriteTerrain++;
         }
 
         private void InitialiserImages()
@@ -106,15 +113,23 @@ namespace ProjetCPP
 
             if (Directory.Exists(dossierImageInit) && Directory.Exists(dossierVeriteTerrain))
             {
+                // Charger les images de image_init_source
+                fichiersImageInit = Directory.EnumerateFiles(dossierImageInit)
+                    .Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                // Charger les images de verite_terrain
+                fichiersVeriteTerrain = Directory.EnumerateFiles(dossierVeriteTerrain)
+                    .Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
                 // Charger la première image de image_init_source
-                fichiersImageInit = Directory.EnumerateFiles(dossierImageInit).Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase)).ToArray();
                 if (fichiersImageInit.Length > 0)
                 {
                     pictureBoxiinitiale.ImageLocation = fichiersImageInit[0];
                 }
 
                 // Charger la première image de verite_terrain
-                fichiersVeriteTerrain = Directory.EnumerateFiles(dossierVeriteTerrain).Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase)).ToArray();
                 if (fichiersVeriteTerrain.Length > 0)
                 {
                     pictureBoxvterrain.ImageLocation = fichiersVeriteTerrain[0];
@@ -130,17 +145,14 @@ namespace ProjetCPP
             indexVeriteTerrain = 0;
         }
 
-        private void displayVerdict()
+        private void displayVerdict(double score)
         {
-            // Supposons que la méthode CalculerPourcentage retourne un double entre 0 et 100
-            double pourcentage = CalculScore();
-
             // Définir la couleur de fond du label Verdict basé sur le pourcentage
-            if (pourcentage > 90)
+            if (score > 90)
             {
                 labelVerdict.BackColor = Color.Green;
             }
-            else if (pourcentage > 80 && pourcentage <= 90)
+            else if (score > 80 && score <= 90)
             {
                 labelVerdict.BackColor = Color.Yellow;
             }
@@ -149,41 +161,5 @@ namespace ProjetCPP
                 labelVerdict.BackColor = Color.Red;
             }
         }
-
-        private double CalculScore()
-        {
-            // Logique de calcul du pourcentage
-            return 95.0;
-        }
-
-        /*
-        private void sensHoraireToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Image img = pictureBoxiinitiale.Image;
-            Image image = pictureBoxvterrain.Image;
-            Bitmap bmp = new Bitmap(img);
-            Bitmap bmp2 = new Bitmap(image);
-
-            // Rotation de 90 degrés dans le sens horaire
-            bmp.RotateFlip(RotateFlipType.Rotate270FlipNone);
-            bmp2.RotateFlip(RotateFlipType.Rotate270FlipNone);
-            pictureBoxiinitiale.Image = bmp;
-            pictureBoxvterrain.Image = bmp2;
-        }
-
-        private void sensTrigonométriqueToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Image img = pictureBoxiinitiale.Image;
-            Image image = pictureBoxvterrain.Image;
-            Bitmap bmp = new Bitmap(img);
-            Bitmap bmp2 = new Bitmap(image);
-
-            // Rotation de 90 degrés dans le sens antihoraire
-            bmp.RotateFlip(RotateFlipType.Rotate90FlipNone);
-            bmp2.RotateFlip(RotateFlipType.Rotate90FlipNone);
-            pictureBoxiinitiale.Image = bmp;
-            pictureBoxvterrain.Image = bmp2;
-        }
-        */
     }
 }

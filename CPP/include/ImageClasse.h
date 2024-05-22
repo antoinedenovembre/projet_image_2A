@@ -118,6 +118,8 @@ class CImageClasse
 		return m_lNbRegions;
 		}
 
+		_declspec(dllexport) CImageNdg toNdg();
+
 		_declspec(dllexport) std::string lireNom() const {
 		return m_sNom;
 		}

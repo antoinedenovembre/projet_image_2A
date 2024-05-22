@@ -38,11 +38,11 @@ namespace libImage
         }
 
         [DllImport("libImage.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr objetLibDataImg(int nbChamps, IntPtr data, int stride, int nbLig, int nbCol);
+        public static extern IntPtr objetLibDataImg(int nbChamps, IntPtr data, IntPtr GT, int stride, int nbLig, int nbCol);
 
-        public IntPtr objetLibDataImgPtr(int nbChamps, IntPtr data, int stride, int nbLig, int nbCol)
+        public IntPtr objetLibDataImgPtr(int nbChamps, IntPtr data, IntPtr GT, int stride, int nbLig, int nbCol)
         {
-            ClPtr = objetLibDataImg(nbChamps, data, stride, nbLig, nbCol);
+            ClPtr = objetLibDataImg(nbChamps, data, GT, stride, nbLig, nbCol);
             return ClPtr;
         }
 

@@ -982,8 +982,26 @@ CImageClasse CImageClasse::filtrage(const std::string& methode, int taille, bool
 	return out;
 }
 
+CImageNdg CImageClasse::toNdg()
+{
+
+	CImageNdg out(this->lireHauteur(), this->lireLargeur());
+	out.ecrireBinaire(false);
+	out.choixPalette("grise");
+	out.ecrireNom(this->lireNom() + "2NDG");
 
 
+	for (int i = 0; i < this->lireNbPixels(); i++)
+		if (this->operator()(i) < 0)
+			out(i) = 0;
+		else
+			if (this->operator()(i) > 256)
+				out(i) = 255;
+			else
+				out(i) = (unsigned char)this->operator()(i);
+
+	return(out);
+}
 
 // signatures forme pour Image_Ndg et Image_Couleur
 std::vector<SIGNATURE_Forme> CImageClasse::sigComposantesConnexes(bool enregistrementCSV) 

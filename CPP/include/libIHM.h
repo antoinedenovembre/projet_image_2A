@@ -25,7 +25,7 @@ public:
 	// constructeurs
 	_declspec(dllexport) ClibIHM(); // par défaut
 
-	_declspec(dllexport) ClibIHM(int nbChamps, byte* data, int stride, int nbLig, int nbCol); // par image format bmp C#
+	_declspec(dllexport) ClibIHM(int nbChamps, byte* data, byte* GT, int stride, int nbLig, int nbCol); // par image format bmp C#
 
 	_declspec(dllexport) ~ClibIHM();
 
@@ -42,7 +42,6 @@ public:
 	_declspec(dllexport) CImageCouleur* imgData() const {
 		return imgPt;
 	}
-
 };
 
 extern "C" _declspec(dllexport) ClibIHM* objetLib()
@@ -51,9 +50,9 @@ extern "C" _declspec(dllexport) ClibIHM* objetLib()
 	return pImg;
 }
 
-extern "C" _declspec(dllexport) ClibIHM* objetLibDataImg(int nbChamps, byte* data, int stride, int nbLig, int nbCol)
+extern "C" _declspec(dllexport) ClibIHM* objetLibDataImg(int nbChamps, byte* data, byte* GT, int stride, int nbLig, int nbCol)
 {
-	ClibIHM* pImg = new ClibIHM(nbChamps,data,stride,nbLig,nbCol);
+	ClibIHM* pImg = new ClibIHM(nbChamps, data, GT, stride, nbLig, nbCol);
 	return pImg;
 }
 

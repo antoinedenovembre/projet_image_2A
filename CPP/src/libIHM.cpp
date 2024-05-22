@@ -17,16 +17,16 @@ ClibIHM::ClibIHM() {
 	this->imgPt = NULL;
 }
 
-ClibIHM::ClibIHM(int nbChamps, byte* data, int stride, int nbLig, int nbCol){
+ClibIHM::ClibIHM(int nbChamps, byte* data, byte* GT, int stride, int nbLig, int nbCol){
 	this->nbDataImg = nbChamps;
 	this->dataFromImg.resize(nbChamps);
 
 	this->imgPt = new CImageCouleur(nbLig, nbCol);
-	CImageCouleur out(nbLig, nbCol);
+	CImageCouleur GTImg = CImageCouleur(nbLig, nbCol);
 
 	// on remplit les pixels
 	byte* pixPtr = (byte*)data;
-
+	byte* pixPtrGt = (byte*)GT;
 	for (int y = 0; y < nbLig; y++)
 	{
 		for (int x = 0; x < nbCol; x++)
@@ -34,34 +34,32 @@ ClibIHM::ClibIHM(int nbChamps, byte* data, int stride, int nbLig, int nbCol){
 			this->imgPt->operator()(y, x)[0] = pixPtr[3 * x + 2];
 			this->imgPt->operator()(y, x)[1] = pixPtr[3 * x + 1];
 			this->imgPt->operator()(y, x)[2] = pixPtr[3 * x ];
+
+			GTImg(y, x)[0] = pixPtrGt[3 * x + 2];
+			GTImg(y, x)[1] = pixPtrGt[3 * x + 1];
+			GTImg(y, x)[2] = pixPtrGt[3 * x];
 		}
 		pixPtr += stride; // largeur une seule ligne gestion multiple 32 bits
+		pixPtrGt += stride;
 	}
 
-	CImageNdg seuil;
+	CImageNdg res;
+	res = this->imgPt->plan().process();
 
-	int seuilBas = 128;
-	int seuilHaut = 255;
+	CImageNdg GTNdg = GTImg.plan();
+	GTNdg.ecrireBinaire(true);
 
-	seuil = this->imgPt->plan().process();
-
-	this->dataFromImg.at(0) = seuilBas;
-
-	for (int i = 0; i < seuil.lireNbPixels(); i++)
-	{
-		out(i)[0] = (unsigned char)(255*(int)seuil(i));
-		out(i)[1] = 0;
-		out(i)[2] = 0;
-	}
+	double score = res.score(GTNdg);
+	this->dataFromImg.at(0) = score;
 
 	pixPtr = (byte*)data;
 	for (int y = 0; y < nbLig; y++)
 	{
 		for (int x = 0; x < nbCol; x++)
 		{
-			pixPtr[3 * x + 2] = out(y, x)[0];
-			pixPtr[3 * x + 1] = out(y, x)[1];
-			pixPtr[3 * x] = out(y, x)[2];
+			pixPtr[3 * x + 2] = res(y, x) * 255;
+			pixPtr[3 * x + 1] = res(y, x) * 255;
+			pixPtr[3 * x] = res(y, x) * 255;
 		}
 		pixPtr += stride; // largeur une seule ligne gestion multiple 32 bits
 	}

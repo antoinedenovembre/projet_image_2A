@@ -167,7 +167,7 @@ void CImageNdg::sauvegarde(const std::string file)
 	BITMAPINFOHEADER infoHeader;
 
 	if (this->m_pucPixel) {          //si on a des donnees a sauvegarder
-		std::string nomFichier = "res/";         //dossier de sauvegarde
+		std::string nomFichier = "C:\\Users\\adute\\Desktop\\ProjCpp\\res\\";         //dossier de sauvegarde
 		
 		if (file.empty())
 			nomFichier += this->lireNom() + ".bmp";        //nom par defaut
@@ -350,40 +350,36 @@ MOMENTS CImageNdg::signatures()
 //surcharge: pas necessaire de preparer un histogramme en amont, plus rapide
 
 // opérations ensemblistes images binaires
-CImageNdg& CImageNdg::operation(const CImageNdg& im, const std::string methode) 
-{
+CImageNdg CImageNdg::operation(const CImageNdg& im, const std::string methode) {
 
-	if ((&im == this) || !(this->lireBinaire() && im.lireBinaire()))  //verification des prerequis
-	{
+	if ((&im == this) || !(this->lireBinaire() && im.lireBinaire())) {
 		throw std::string("Operation logique uniquement possible entre 2 images binaires");
 		return *this;
 	}
 
-	this->m_iHauteur = im.lireHauteur();    //configuration de l'image resultat
-	this->m_iLargeur = im.lireLargeur();
-	this->m_bBinaire = im.lireBinaire(); 
-	this->choixPalette("binaire"); // images binaires -> palettes binaires
-	this->m_sNom     = im.lireNom()+"Op";
+	CImageNdg out(this->lireHauteur(), this->lireLargeur());
+	out.m_bBinaire = im.lireBinaire();
+	out.choixPalette("binaire"); // images binaires -> palettes binaires
+	out.m_sNom = im.lireNom() + "Op";
 
-	if (methode.compare("et") == 0) 
-	{
-		for (int i=0;i<this->lireNbPixels();i++)
-			this->operator()(i) = this->operator()(i) && im(i);
+	if (methode.compare("et") == 0) {
+		for (int i = 0; i < this->lireNbPixels(); i++)
+		{
+			out.operator()(i) = this->operator()(i) && im(i);
+		}
 	}
 	else
-		if (methode.compare("ou") == 0) 
-		{
-			for (int i=0;i<this->lireNbPixels();i++)
-				this->operator()(i) = this->operator()(i) || im(i);
+		if (methode.compare("ou") == 0) {
+			for (int i = 0; i < this->lireNbPixels(); i++)
+				out.operator()(i) = this->operator()(i) || im(i);
 		}
 		else
-			if (methode.compare("-") == 0) 
-			{
-				for (int i = 0; i<this->lireNbPixels(); i++)
-					this->operator()(i) = this->operator()(i) - im(i); // vigilance sur les images opérérées !
+			if (methode.compare("-") == 0) {
+				for (int i = 0; i < this->lireNbPixels(); i++)
+					out.operator()(i) = this->operator()(i) - im(i); // vigilance sur les images opérérées !
 			}
 
-return *this;
+	return out;
 }
 
 double CImageNdg::score(const CImageNdg& im, const std::string methode)
@@ -409,7 +405,11 @@ double CImageNdg::score(const CImageNdg& im, const std::string methode)
 	double unionArea = unionImg.compterPixelsNonNuls();
 
 	// Calcul du score IoU
-	double iouScore = (unionArea == 0.0) ? 0.0 : intersectionArea / unionArea;
+	double iouScore = intersectionArea / unionArea;
+
+	return iouScore;
+
+	// 	return 0.99;
 
 	// Création d'une nouvelle image pour stocker le résultat
 	//CImageNdg* resultImage = new CImageNdg(this->lireHauteur(), this->lireLargeur(), iouScore);
@@ -1108,6 +1108,8 @@ CImageNdg CImageNdg::invert()
 	return imgInvert;
 }
 
+#include "ImageClasse.h"
+
 CImageNdg CImageNdg::process()
 {
 	CImageNdg tmp = *this;
@@ -1129,5 +1131,21 @@ CImageNdg CImageNdg::process()
 	// Thresholding
 	CImageNdg imgThresholded = imgSobel.seuillage("otsu");
 
-	return imgThresholded;
+	imgThresholded.sauvegarde("qsdazd_AVANT");
+
+	// Filter out small objects
+	CImageClasse imgClasse{ imgThresholded, "V8" };
+
+	imgClasse = imgClasse.filtrage("taille", 15);
+
+	CImageNdg imgFilteredSmallObjects = imgClasse.toNdg().seuillage("manuel", 1);
+	imgFilteredSmallObjects.sauvegarde("qsdazd");
+
+	// Fermeture
+	CImageNdg imgMorpho = imgFilteredSmallObjects.morphologie("dilatation", "V8");
+	imgMorpho = imgMorpho.morphologie("erosion", "V8");
+
+	imgMorpho.sauvegarde("qsdazd_APRES");
+
+	return imgMorpho;
 }

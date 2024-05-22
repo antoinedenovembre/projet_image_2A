@@ -149,7 +149,7 @@ class CImageNdg                               //classe pour une image en niveau 
 			{
 				for (int j = 0; j < this->lireLargeur(); ++j) 
 				{
-					if ((*this)(i, j) != 0) 
+					if (this->operator()(i, j) != 0)
 					{ // (*this)(i, j) accède à la valeur du pixel
 						++count;
 					}
@@ -269,7 +269,7 @@ class CImageNdg                               //classe pour une image en niveau 
 		// opérations ensemblistes pour images binaires
 		// im1 = im1 operation im2;
 		// options : ""et", "ou", "-"
-		_declspec(dllexport) CImageNdg& operation(const CImageNdg& im, const std::string methode = "et");
+		_declspec(dllexport) CImageNdg operation(const CImageNdg& im, const std::string methode = "et");
 
 		// score comparaison images binaire SEG/verite terrain
 		// im1 = im1 operation im2;
