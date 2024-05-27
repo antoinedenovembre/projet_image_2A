@@ -63,6 +63,17 @@ namespace ProjetCPP
             {
                 pictureBoxiinitiale.ImageLocation = fichiersImageInit[indexImageInit];
                 pictureBoxiinitiale.Load();
+
+                // Mettre à jour l'image de vérité terrain
+                if (indexVeriteTerrain < fichiersVeriteTerrain.Length)
+                {
+                    pictureBoxvterrain.ImageLocation = fichiersVeriteTerrain[indexVeriteTerrain];
+                    pictureBoxvterrain.Load();
+                }
+                else
+                {
+                    indexVeriteTerrain = 0;
+                }
             }
             else
             {
@@ -148,11 +159,11 @@ namespace ProjetCPP
         private void displayVerdict(double score)
         {
             // Définir la couleur de fond du label Verdict basé sur le pourcentage
-            if (score > 90)
+            if (score > 70)
             {
                 labelVerdict.BackColor = Color.Green;
             }
-            else if (score > 80 && score <= 90)
+            else if (score > 50 && score <= 70)
             {
                 labelVerdict.BackColor = Color.Yellow;
             }

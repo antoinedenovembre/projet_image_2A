@@ -274,7 +274,7 @@ class CImageNdg                               //classe pour une image en niveau 
 		// score comparaison images binaire SEG/verite terrain
 		// im1 = im1 operation im2;
 		// options : "iou": intersection over union
-		_declspec(dllexport) double score(const CImageNdg& im, const std::string methode = "iou");
+		_declspec(dllexport) double score(CImageNdg& im, const std::string methode = "iou");
 
 		_declspec(dllexport) CImageNdg seuillage2(const std::string& methode, int& seuilBas, int& seuilHaut);
 
@@ -289,7 +289,7 @@ class CImageNdg                               //classe pour une image en niveau 
 		// morphologie
 		// méthode options : "erosion", "dilatation"
 		// élément structurant options : "V4" ou "V8"
-		_declspec(dllexport) CImageNdg morphologie(const std::string methode = "dilatation", const std::string eltStructurant = "V8");
+		_declspec(dllexport) CImageNdg morphologie(const std::string methode = "dilatation", const std::string eltStructurant = "V8", const int nbIteration = 1);
 
 		_declspec(dllexport) CImageNdg nonMaximaSuppression(const CImageNdg& angleImage);
 

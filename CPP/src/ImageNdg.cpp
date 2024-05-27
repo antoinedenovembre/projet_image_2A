@@ -7,146 +7,149 @@
 #include <math.h>
 #include <windows.h>
 
+#include "ImageClasse.h"
+#include <regex>
+
 #include "ImageNdg.h"
 #include "ImageDouble.h"
 
 
 // constructeurs et destructeur
-CImageNdg::CImageNdg() 
+CImageNdg::CImageNdg()
 {
 
-	this->m_iHauteur  = 0;
-	this->m_iLargeur  = 0;
-	this->m_bBinaire  = false;       // Image Ndg par défaut non binaire, binaire après seuillage
-	this->m_sNom      = "vide";      // pas de nom par défaut
-	
-	this->m_pucPixel  = NULL;        // pas de pixels par défaut
+	this->m_iHauteur = 0;
+	this->m_iLargeur = 0;
+	this->m_bBinaire = false;       // Image Ndg par défaut non binaire, binaire après seuillage
+	this->m_sNom = "vide";      // pas de nom par défaut
+
+	this->m_pucPixel = NULL;        // pas de pixels par défaut
 	this->m_pucPalette = NULL;       // pas de palette par défaut
 }
 
-CImageNdg::CImageNdg(int hauteur, int largeur, int valeur) 
+CImageNdg::CImageNdg(int hauteur, int largeur, int valeur)
 {
 
 	this->m_iHauteur = hauteur;
 	this->m_iLargeur = largeur;
-	this->m_bBinaire	= false; // Image Ndg par défaut, binaire après seuillage
-	this->m_sNom      = "inconnu";
+	this->m_bBinaire = false; // Image Ndg par défaut, binaire après seuillage
+	this->m_sNom = "inconnu";
 
-	this->m_pucPixel = new unsigned char[hauteur*largeur];        // allocation dynamique des pixels 
-	this->m_pucPalette = new unsigned char[256*4];	
+	this->m_pucPixel = new unsigned char[hauteur * largeur];        // allocation dynamique des pixels 
+	this->m_pucPalette = new unsigned char[256 * 4];
 	choixPalette("grise"); // palette grise par défaut, choix utilisateur 
-	if (valeur != -1) 
-		for (int i=0;i<this->lireNbPixels();i++)
+	if (valeur != -1)
+		for (int i = 0; i < this->lireNbPixels(); i++)
 			this->m_pucPixel[i] = valeur;
 }
 
-CImageNdg::CImageNdg(const std::string name) 
+CImageNdg::CImageNdg(const std::string name)
 {
 	BITMAPFILEHEADER header;
 	BITMAPINFOHEADER infoHeader;
-	
-	std::ifstream f(name.c_str(),std::ios::in | std::ios::binary); 
-		if (f.is_open()) {
-			f.read((char*)&header.bfType,2);
-			f.read((char*)&header.bfSize, 4);
-			f.read((char*)&header.bfReserved1, 2);
-			f.read((char*)&header.bfReserved2, 2);
-			f.read((char*)&header.bfOffBits, 4);
-			if (header.bfType != MAGIC_NUMBER_BMP) 
-				throw std::string("ouverture format BMP impossible ..."); 
+
+	std::ifstream f(name.c_str(), std::ios::in | std::ios::binary);
+	if (f.is_open()) {
+		f.read((char*)&header.bfType, 2);
+		f.read((char*)&header.bfSize, 4);
+		f.read((char*)&header.bfReserved1, 2);
+		f.read((char*)&header.bfReserved2, 2);
+		f.read((char*)&header.bfOffBits, 4);
+		if (header.bfType != MAGIC_NUMBER_BMP)
+			throw std::string("ouverture format BMP impossible ...");
+		else {
+			f.read((char*)&infoHeader.biSize, 4);
+			f.read((char*)&infoHeader.biWidth, 4);
+			f.read((char*)&infoHeader.biHeight, 4);
+			f.read((char*)&infoHeader.biPlanes, 2);
+			f.read((char*)&infoHeader.biBitCount, 2);
+			f.read((char*)&infoHeader.biCompression, 4);
+			f.read((char*)&infoHeader.biSizeImage, 4);
+			f.read((char*)&infoHeader.biXPelsPerMeter, 4);
+			f.read((char*)&infoHeader.biYPelsPerMeter, 4);
+			f.read((char*)&infoHeader.biClrUsed, 4);
+			f.read((char*)&infoHeader.biClrImportant, 4);
+			if (infoHeader.biCompression > 0)
+				throw std::string("Format compresse non supporte...");
 			else {
-				f.read((char*)&infoHeader.biSize, 4);
-				f.read((char*)&infoHeader.biWidth, 4);
-				f.read((char*)&infoHeader.biHeight, 4);
-				f.read((char*)&infoHeader.biPlanes, 2);
-				f.read((char*)&infoHeader.biBitCount, 2);
-				f.read((char*)&infoHeader.biCompression, 4);
-				f.read((char*)&infoHeader.biSizeImage, 4);
-				f.read((char*)&infoHeader.biXPelsPerMeter, 4);
-				f.read((char*)&infoHeader.biYPelsPerMeter, 4);
-				f.read((char*)&infoHeader.biClrUsed, 4);
-				f.read((char*)&infoHeader.biClrImportant, 4);
-				if (infoHeader.biCompression > 0) 
-					throw std::string("Format compresse non supporte...");
-				else {
-					if (infoHeader.biBitCount == 8) {
-						this->m_iHauteur = infoHeader.biHeight;
-						this->m_iLargeur = infoHeader.biWidth;
-						this->m_bBinaire = false;
-						this->m_sNom.assign(name.begin(),name.end()-4);
-						this->m_pucPalette = new unsigned char[256*4];	
-						this->m_pucPixel = new unsigned char[infoHeader.biHeight * infoHeader.biWidth];
+				if (infoHeader.biBitCount == 8) {
+					this->m_iHauteur = infoHeader.biHeight;
+					this->m_iLargeur = infoHeader.biWidth;
+					this->m_bBinaire = false;
+					this->m_sNom.assign(name.begin(), name.end() - 4);
+					this->m_pucPalette = new unsigned char[256 * 4];
+					this->m_pucPixel = new unsigned char[infoHeader.biHeight * infoHeader.biWidth];
 
-						// gérer multiple de 32 bits via zéros éventuels ignorés
-						int complement = (((this->m_iLargeur-1)/4) + 1)*4 - this->m_iLargeur;
-						for (int indice=0;indice<4*256;indice++) 
-							f.read((char*)&this->m_pucPalette[indice],sizeof(char));
+					// gérer multiple de 32 bits via zéros éventuels ignorés
+					int complement = (((this->m_iLargeur - 1) / 4) + 1) * 4 - this->m_iLargeur;
+					for (int indice = 0; indice < 4 * 256; indice++)
+						f.read((char*)&this->m_pucPalette[indice], sizeof(char));
 
-						for (int i= this->m_iHauteur-1; i >= 0; i--) {
-							for (int j=0; j<this->m_iLargeur; j++) 
-								f.read((char*)&this->m_pucPixel[i*this->m_iLargeur+j],sizeof(char));
+					for (int i = this->m_iHauteur - 1; i >= 0; i--) {
+						for (int j = 0; j < this->m_iLargeur; j++)
+							f.read((char*)&this->m_pucPixel[i * this->m_iLargeur + j], sizeof(char));
 
-							char inutile;
-							for (int k=0; k< complement; k++)
-								f.read((char*)&inutile,sizeof(char));
+						char inutile;
+						for (int k = 0; k < complement; k++)
+							f.read((char*)&inutile, sizeof(char));
+					}
+				}
+				else
+				{
+					// cas d'une image couleur
+					this->m_iHauteur = infoHeader.biHeight;
+					this->m_iLargeur = infoHeader.biWidth;
+					this->m_bBinaire = false;
+					this->m_sNom.assign(name.begin(), name.end() - 4);
+					this->m_pucPalette = new unsigned char[256 * 4];
+					this->choixPalette("grise"); // palette grise par défaut
+					this->m_pucPixel = new unsigned char[infoHeader.biHeight * infoHeader.biWidth];
+
+					// extraction plan luminance
+					int complement = (((this->m_iLargeur * 3 - 1) / 4) + 1) * 4 - this->m_iLargeur * 3;
+					for (int i = this->m_iHauteur - 1; i >= 0; i--) {
+						for (int j = 0; j < this->m_iLargeur * 3; j += 3) {
+							unsigned char rouge, vert, bleu;
+							f.read((char*)&rouge, sizeof(char));
+							f.read((char*)&vert, sizeof(char));
+							f.read((char*)&bleu, sizeof(char));
+							this->m_pucPixel[i * this->m_iLargeur + j / 3] = (unsigned char)(((int)rouge + (int)vert + (int)bleu) / 3);
 						}
-					}	
-					else 
-					{
-						// cas d'une image couleur
-						this->m_iHauteur = infoHeader.biHeight;
-						this->m_iLargeur = infoHeader.biWidth;
-						this->m_bBinaire = false;
-						this->m_sNom.assign(name.begin(),name.end()-4);
-						this->m_pucPalette = new unsigned char[256*4];	
-						this->choixPalette("grise"); // palette grise par défaut
-						this->m_pucPixel = new unsigned char[infoHeader.biHeight * infoHeader.biWidth];
 
-						// extraction plan luminance
-						int complement = (((this->m_iLargeur*3-1)/4) + 1)*4 - this->m_iLargeur*3;
-						for (int i= this->m_iHauteur-1; i >= 0; i--) {
-							for (int j=0;j<this->m_iLargeur*3;j+=3) {
-								unsigned char rouge,vert,bleu;
-								f.read((char*)&rouge,sizeof(char));
-								f.read((char*)&vert,sizeof(char)); 
-								f.read((char*)&bleu,sizeof(char));
-								this->m_pucPixel[i*this->m_iLargeur+j/3]=(unsigned char)(((int)rouge+(int)vert+(int)bleu)/3);
-							}	
-
-							char inutile;
-							for (int k=0; k< complement; k++)
-								f.read((char*)&inutile,sizeof(char));
-						}
+						char inutile;
+						for (int k = 0; k < complement; k++)
+							f.read((char*)&inutile, sizeof(char));
 					}
 				}
 			}
-			f.close();
 		}
-		else
-			throw std::string("ERREUR : Image absente (ou pas ici en tout cas) !");
+		f.close();
+	}
+	else
+		throw std::string("ERREUR : Image absente (ou pas ici en tout cas) !");
 }
 
-CImageNdg::CImageNdg(const CImageNdg& im) 
+CImageNdg::CImageNdg(const CImageNdg& im)
 {
 
 	this->m_iHauteur = im.lireHauteur();
 	this->m_iLargeur = im.lireLargeur();
-	this->m_bBinaire = im.lireBinaire(); 
-	this->m_sNom     = im.lireNom();
-	this->m_pucPixel = NULL; 
+	this->m_bBinaire = im.lireBinaire();
+	this->m_sNom = im.lireNom();
+	this->m_pucPixel = NULL;
 	this->m_pucPalette = NULL;
 
-	if (im.m_pucPalette != NULL) {	
-		this->m_pucPalette = new unsigned char[256*4];	// allocation dynamique de la palette
-		memcpy(this->m_pucPalette,im.m_pucPalette,4*256); // copie de la palette
+	if (im.m_pucPalette != NULL) {
+		this->m_pucPalette = new unsigned char[256 * 4];	// allocation dynamique de la palette
+		memcpy(this->m_pucPalette, im.m_pucPalette, 4 * 256); // copie de la palette
 	}
 	if (im.m_pucPixel != NULL) {
 		this->m_pucPixel = new unsigned char[im.lireHauteur() * im.lireLargeur()];// allocation dynamique des pixels
-		memcpy(this->m_pucPixel,im.m_pucPixel,im.lireNbPixels()); // copie des pixels
+		memcpy(this->m_pucPixel, im.m_pucPixel, im.lireNbPixels()); // copie des pixels
 	}
 }
 
-CImageNdg::~CImageNdg() 
+CImageNdg::~CImageNdg()
 {
 	if (this->m_pucPixel)             //libération mémoire des pixels
 	{
@@ -161,28 +164,28 @@ CImageNdg::~CImageNdg()
 	}
 }
 
-void CImageNdg::sauvegarde(const std::string file) 
+void CImageNdg::sauvegarde(const std::string file)
 {
 	BITMAPFILEHEADER header;        //prepare l'entete du fichier bmp
 	BITMAPINFOHEADER infoHeader;
 
 	if (this->m_pucPixel) {          //si on a des donnees a sauvegarder
 		std::string nomFichier = "C:\\Users\\adute\\Desktop\\ProjCpp\\res\\";         //dossier de sauvegarde
-		
+
 		if (file.empty())
 			nomFichier += this->lireNom() + ".bmp";        //nom par defaut
 		else
 			nomFichier += file + ".bmp";                    //nom choisi
 
-		std::ofstream f(nomFichier.c_str(),std::ios::binary);      //ouverture du fichier en ecriture binaire
+		std::ofstream f(nomFichier.c_str(), std::ios::binary);      //ouverture du fichier en ecriture binaire
 		if (f.is_open()) {
 
-			int complement = (((this->m_iLargeur-1)/4) + 1)*4 - this->m_iLargeur;
+			int complement = (((this->m_iLargeur - 1) / 4) + 1) * 4 - this->m_iLargeur;
 
 			header.bfType = MAGIC_NUMBER_BMP;            //ecriture des entetes
 			f.write((char*)&header.bfType, 2);
 			header.bfOffBits = 14 * sizeof(char) + 40 * sizeof(char) + 4 * 256 * sizeof(char); // palette
-			header.bfSize = header.bfOffBits + (complement + lireLargeur())*lireHauteur()*sizeof(char);
+			header.bfSize = header.bfOffBits + (complement + lireLargeur()) * lireHauteur() * sizeof(char);
 			f.write((char*)&header.bfSize, 4);
 			header.bfReserved1 = 0;
 			f.write((char*)&header.bfReserved1, 2);
@@ -190,7 +193,7 @@ void CImageNdg::sauvegarde(const std::string file)
 			f.write((char*)&header.bfReserved2, 2);
 			f.write((char*)&header.bfOffBits, 4);
 
-			infoHeader.biSize = 40*sizeof(char);
+			infoHeader.biSize = 40 * sizeof(char);
 			f.write((char*)&infoHeader.biSize, 4);
 			infoHeader.biWidth = this->m_iLargeur;
 			f.write((char*)&infoHeader.biWidth, 4);
@@ -214,19 +217,19 @@ void CImageNdg::sauvegarde(const std::string file)
 			f.write((char*)&infoHeader.biClrImportant, 4);
 
 			// on remplit la palette                         //ecriture de la palette
-			for (int indice=0;indice<4*256;indice ++) 
-				f.write((char*)&this->m_pucPalette[indice],sizeof(char)); 
+			for (int indice = 0; indice < 4 * 256; indice++)
+				f.write((char*)&this->m_pucPalette[indice], sizeof(char));
 
-			for (int i= this->m_iHauteur-1; i >= 0; i--) {  //ecriture des pixels et gestion du padding
-				for (int j=0;j<m_iLargeur;j++) 
-					f.write((char*)&this->m_pucPixel[i*m_iLargeur+j],sizeof(char));
-					
+			for (int i = this->m_iHauteur - 1; i >= 0; i--) {  //ecriture des pixels et gestion du padding
+				for (int j = 0; j < m_iLargeur; j++)
+					f.write((char*)&this->m_pucPixel[i * m_iLargeur + j], sizeof(char));
+
 				// gérer multiple de 32 bits
 				char inutile;
-				for (int k=0; k< complement; k++)
-					f.write((char*)&inutile,sizeof(char)); 
-				}
-		f.close();                         //fermeture du fichier
+				for (int k = 0; k < complement; k++)
+					f.write((char*)&inutile, sizeof(char));
+			}
+			f.close();                         //fermeture du fichier
 		}
 		else
 			throw std::string("Impossible de creer le fichier de sauvegarde !"); //gestion des exceptions
@@ -243,8 +246,8 @@ CImageNdg& CImageNdg::operator=(const CImageNdg& im)                         //O
 
 	this->m_iHauteur = im.lireHauteur();      //copie des attributs simples depuis l'instance source
 	this->m_iLargeur = im.lireLargeur();
-	this->m_bBinaire = im.lireBinaire(); 
-	this->m_sNom     = im.lireNom();
+	this->m_bBinaire = im.lireBinaire();
+	this->m_sNom = im.lireNom();
 
 	if (this->m_pucPixel)                     //gestion de la mémoire pour les pixels
 		delete[] this->m_pucPixel;
@@ -252,35 +255,35 @@ CImageNdg& CImageNdg::operator=(const CImageNdg& im)                         //O
 
 	if (this->m_pucPalette)                  //gestion de la mémoire pour la palette
 		delete[] this->m_pucPalette;
-	this->m_pucPalette = new unsigned char[256*4];
+	this->m_pucPalette = new unsigned char[256 * 4];
 
 	if (im.m_pucPalette != NULL)              //copie des données de l'image source
-		memcpy(this->m_pucPalette,im.m_pucPalette,4*256);
-	if (im.m_pucPixel != NULL)                
-		memcpy(this->m_pucPixel,im.m_pucPixel,im.lireNbPixels());
+		memcpy(this->m_pucPalette, im.m_pucPalette, 4 * 256);
+	if (im.m_pucPixel != NULL)
+		memcpy(this->m_pucPixel, im.m_pucPixel, im.lireNbPixels());
 
-return *this;                             //retour de l'instance courante
+	return *this;                             //retour de l'instance courante
 }
 
 // fonctionnalités histogramme 
-std::vector<unsigned long> CImageNdg::histogramme(bool enregistrementCSV) 
+std::vector<unsigned long> CImageNdg::histogramme(bool enregistrementCSV)
 {
 
 	std::vector<unsigned long> h;
 
-	h.resize(256,0);                            // initialisation à 0 ,redimensionnement du vecteur sur 256 éléments
-	for (int i=0;i<this->lireNbPixels();i++) 
+	h.resize(256, 0);                            // initialisation à 0 ,redimensionnement du vecteur sur 256 éléments
+	for (int i = 0; i < this->lireNbPixels(); i++)
 		h[this->operator()(i)] += 1L; 		 // comptage des pixels, calcul de l'histogramme
 
 	if (enregistrementCSV)                    //ecriture de l'histogramme dans un fichier csv
 	{
-	 std::string fichier = "res/" + this->lireNom() + ".csv";
-		std::ofstream f (fichier.c_str());
+		std::string fichier = "res/" + this->lireNom() + ".csv";
+		std::ofstream f(fichier.c_str());
 
 		if (!f.is_open())
 			throw std::string("Impossible d'ouvrir le fichier en ecriture !");
 		else {
-			for (int i=0;i<(int)h.size();i++)
+			for (int i = 0; i < (int)h.size(); i++)
 				f << h[i] << std::endl;
 		}
 		f.close();
@@ -290,29 +293,29 @@ std::vector<unsigned long> CImageNdg::histogramme(bool enregistrementCSV)
 }
 
 // signatures globales
-MOMENTS CImageNdg::signatures(const std::vector<unsigned long> h) 
+MOMENTS CImageNdg::signatures(const std::vector<unsigned long> h)
 {
 
 	MOMENTS globales;        //initialisation de la structure
-	
+
 	// min                     //calcul du minimum d'intensité(minNdg)
-	int i=0;
+	int i = 0;
 	while ((i < (int)h.size()) && (h[i] == 0))
 		i++;
 	globales.minNdg = i;
-		
+
 	// max                   //calcul du maximum d'intensité(maxNdg)
-	i=h.size()-1;
+	i = h.size() - 1;
 	while ((i > 0) && (h[i] == 0))
 		i--;
 	globales.maxNdg = i;
 
 	// mediane              //calcul de la médiane d'intensité(medianeNdg)
-	int moitPop = this->lireNbPixels()/2;
+	int moitPop = this->lireNbPixels() / 2;
 
-	i=globales.minNdg;
+	i = globales.minNdg;
 	int somme = h[i];
-	while (somme < moitPop) 
+	while (somme < moitPop)
 	{
 		i += 1;
 		if (i < (int)h.size())
@@ -321,23 +324,23 @@ MOMENTS CImageNdg::signatures(const std::vector<unsigned long> h)
 	globales.medianeNdg = i;
 
 	// moyenne et écart-type
-	float moy=0,sigma=0;
-	for (i=globales.minNdg;i<=globales.maxNdg;i++) 
+	float moy = 0, sigma = 0;
+	for (i = globales.minNdg; i <= globales.maxNdg; i++)
 	{
-		moy += ((float)h[i])*i;
-		sigma += ((float)h[i])*i*i;
+		moy += ((float)h[i]) * i;
+		sigma += ((float)h[i]) * i * i;
 	}
 	moy /= (float)this->lireNbPixels();
-	sigma = sqrt(sigma/(float)this->lireNbPixels() - (moy*moy));
+	sigma = sqrt(sigma / (float)this->lireNbPixels() - (moy * moy));
 	globales.moyenneNdg = moy;
 	globales.ecartTypeNdg = sigma;
 
 	return globales;       //retour de l'objet MOMENTS
 }
 
-MOMENTS CImageNdg::signatures() 
+MOMENTS CImageNdg::signatures()
 {
-	
+
 	MOMENTS globales = { 0,0,0,0,0 };        // initialisation de la structure MOMENTS
 
 	std::vector<unsigned long> hist;		// calcul de l'histogramme
@@ -382,40 +385,34 @@ CImageNdg CImageNdg::operation(const CImageNdg& im, const std::string methode) {
 	return out;
 }
 
-double CImageNdg::score(const CImageNdg& im, const std::string methode)
+double CImageNdg::score(CImageNdg& im, const std::string methode)
 {
-	// implementation uniquement pour le score IoU
-	if (methode.compare("iou") != 0)
-	{
-		throw std::string("IoU uniquement !");
+	int intersection = 0;
+	int union_area = 0;
+
+	CImageNdg intersection_img(this->lireHauteur(), this->lireLargeur());
+	CImageNdg union_img(this->lireHauteur(), this->lireLargeur());
+
+	// Parcours de l'image pour compter tous les pixel de l'intersection et de l'union
+	for (int i = 0; i < this->lireHauteur(); i++) {
+		for (int j = 0; j < this->lireLargeur(); j++) {
+			if (this->operator()(i, j) != 0 && im(i, j) != 0) {
+				intersection++;
+				// Save intersection image
+				intersection_img(i, j) = 255;
+			}
+			if (this->operator()(i, j) != 0 || im(i, j) != 0) {
+				union_area++;
+				// Save union image
+				union_img(i, j) = 255;
+			}
+		}
 	}
 
-	// Vérification si les images sont binaires
-	if (!this->lireBinaire() || !im.lireBinaire())
-	{
-		throw std::string("Attention, une des images n'est pas binaire");
-	}
-
-	// Utilisation de la méthode 'operation' pour calculer l'intersection et l'union
-	CImageNdg intersection = this->operation(im, "et");
-	CImageNdg unionImg = this->operation(im, "ou");
-
-	// Calcul des aires d'intersection et d'union
-	double intersectionArea = intersection.compterPixelsNonNuls(); // Supposons que compterPixels() compte les pixels à 1
-	double unionArea = unionImg.compterPixelsNonNuls();
-
-	// Calcul du score IoU
-	double iouScore = intersectionArea / unionArea;
-
-	return iouScore;
-
-	// 	return 0.99;
-
-	// Création d'une nouvelle image pour stocker le résultat
-	//CImageNdg* resultImage = new CImageNdg(this->lireHauteur(), this->lireLargeur(), iouScore);
-
-	// Retour de l'image résultat
-	//return *resultImage;
+	// Calcul du score IoU (Intersection over Union)
+	if (union_area == 0) return 0;
+	float iou = (float)(intersection) / union_area;
+	return iou;
 }
 
 CImageNdg CImageNdg::seuillage2(const std::string& methode, int& seuilBas, int& seuilHaut) {
@@ -507,10 +504,10 @@ CImageNdg CImageNdg::seuillage2(const std::string& methode, int& seuilBas, int& 
 // seuillage
 CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seuilHaut, double sigma)
 {
-	
+
 	if (!this->m_bBinaire)    //vérification d'une image binaire
 	{
-		CImageNdg out(this->lireHauteur(),this->lireLargeur());    //initialisation de l'image resultat
+		CImageNdg out(this->lireHauteur(), this->lireLargeur());    //initialisation de l'image resultat
 		out.choixPalette("binaire"); // palette binaire par défaut
 		out.m_bBinaire = true;
 
@@ -524,7 +521,7 @@ CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seui
 		{
 			out.m_sNom = this->lireNom() + "SeMa";
 		}
-		else 
+		else
 			if (methode.compare("otsu") == 0)
 			{
 				out.m_sNom = this->lireNom() + "SeAu";
@@ -556,37 +553,37 @@ CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seui
 				for (int i = min + 1; i <= max; i++)
 					M2 += (double)hist[i] * i;
 				M2 /= (double)(histC[max] - hist[min]);
-				tab[min] = w1*(1 - w1)*(M1 - M2)*(M1 - M2);
+				tab[min] = w1 * (1 - w1) * (M1 - M2) * (M1 - M2);
 
 				for (int i = min + 1; i < max; i++) {
 					M1 = ((double)histC[i - 1] * M1 + (double)hist[i] * i) / histC[i];
-					M2 = ((double)(histC[255] - histC[i - 1])*M2 - hist[i] * i) / (double)(histC[255] - histC[i]);
+					M2 = ((double)(histC[255] - histC[i - 1]) * M2 - hist[i] * i) / (double)(histC[255] - histC[i]);
 					w1 = (double)histC[i] / (double)(this->lireNbPixels());
-					tab[i] = w1*(1 - w1)*(M1 - M2)*(M1 - M2);
+					tab[i] = w1 * (1 - w1) * (M1 - M2) * (M1 - M2);
 					if (tab[i] > tab[seuilBas])
 						seuilBas = i;
 				}
 			}
-			else 
+			else
 			{
 				// gestion des seuils valant "moyenne" et "mediane"
-				if (methode.compare("moyenne")==0)    //utiliser la moyenne des intensités de l'image comme seuil
+				if (methode.compare("moyenne") == 0)    //utiliser la moyenne des intensités de l'image comme seuil
 				{
 					out.m_sNom = this->lireNom() + "SeMo";
 					seuilBas = (int)this->signatures().moyenneNdg;
 					seuilHaut = 255;
 				}
 
-				else 
+				else
 					if (methode.compare("mediane") == 0)	//utiliser la médiane des intensités de l'image comme seuil
-						{
-							out.m_sNom = this->lireNom() + "SeMe";
-							seuilBas = (int)this->signatures().medianeNdg;
-							seuilHaut = 255;
-						}
+					{
+						out.m_sNom = this->lireNom() + "SeMe";
+						seuilBas = (int)this->signatures().medianeNdg;
+						seuilHaut = 255;
+					}
 
-				else 
-					if (methode.compare("ksigma") == 0)
+					else
+						if (methode.compare("ksigma") == 0)
 						{
 							out.m_sNom = this->lireNom() + "SeKS";
 
@@ -608,23 +605,23 @@ CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seui
 						}
 
 			}
- 
+
 
 		// génération lut
 		for (int i = 0; i < seuilBas; i++)
-			lut[i] =  0; 
+			lut[i] = 0;
 		for (int i = seuilBas; i <= seuilHaut; i++)
 			lut[i] = 1;
-		for (int i = seuilHaut+1; i <= 255; i++)
+		for (int i = seuilHaut + 1; i <= 255; i++)
 			lut[i] = 0;
 
 		// création image seuillée
 		std::cout << "Seuillage des pixels entre " << seuilBas << " et " << seuilHaut << std::endl;
-		for (int i=0; i < out.lireNbPixels(); i++) 
-			out(i) = lut[this->operator ()(i)]; 
+		for (int i = 0; i < out.lireNbPixels(); i++)
+			out(i) = lut[this->operator ()(i)];
 
 		return out;
-		}
+	}
 	else {
 		throw std::string("Seuillage image binaire impossible");
 		return (*this);
@@ -632,10 +629,9 @@ CImageNdg CImageNdg::seuillage(const std::string methode, int seuilBas, int seui
 }
 
 // transformation
-CImageNdg CImageNdg::transformation(const std::string methode) 
+CImageNdg CImageNdg::transformation(const std::string methode)
 {
-
-	CImageNdg out(this->lireHauteur(),this->lireLargeur());     // initialisation de l'image resultat
+	CImageNdg out(this->lireHauteur(), this->lireLargeur());     // initialisation de l'image resultat
 
 	std::vector<int> map = this->lirePalette();                 // conservation de la palette
 	out.choixPalette(map); // conservation de la palette 
@@ -663,15 +659,15 @@ CImageNdg CImageNdg::transformation(const std::string methode)
 			for (int i = 1; i < 256; i++)
 				lut[i] = 0;
 		}
-		
+
 		for (int i = 0; i < out.lireNbPixels(); i++) //chaque pixel de l'image est maj grace à la lut
 			out(i) = lut[this->operator()(i)];
 	}
 	else
-		if (methode.compare("expansion") == 0) 
+		if (methode.compare("expansion") == 0)
 		{
 			out.m_sNom = this->lireNom() + "TExp";     // nommage de l'image resultat
-			int min = 255, max = 0; 
+			int min = 255, max = 0;
 			for (int i = 0; i < this->lireNbPixels(); i++) {  // recherche min et max image
 				if (this->operator()(i) > max)
 					max = this->operator()(i);
@@ -680,23 +676,23 @@ CImageNdg CImageNdg::transformation(const std::string methode)
 			}
 
 			double a = 255 / (double)(max - min);
-			double b = -a*min;
+			double b = -a * min;
 
 			std::vector<int> lut;   // création lut pour expansion linéaire des niveaux de gris en fonction de min et max
 			lut.resize(256);
 
 			for (int i = 0; i < 256; i++) //maj de chaque pixel de l'image en fonction de la lut
-				lut[i] = (int)(a*i + b);
+				lut[i] = (int)(a * i + b);
 			for (int i = 0; i < out.lireNbPixels(); i++)
 				out(i) = lut[this->operator()(i)];
 		}
 		else
-			if (methode.compare("egalisation") == 0) 
+			if (methode.compare("egalisation") == 0)
 			{
 				out.m_sNom = this->lireNom() + "TEga";
 				std::vector<unsigned long> h = this->histogramme(); // calcul de l'histogramme
 				std::vector<unsigned long> hC = h;  // histogramme cumulé
-				for (int i = 1; i<(int)h.size(); i++)
+				for (int i = 1; i < (int)h.size(); i++)
 					hC[i] = hC[i - 1] + h[i]; // calcul de l'histogramme cumulé
 
 				// recherche min et max non nuls de l'histogramme
@@ -714,7 +710,7 @@ CImageNdg CImageNdg::transformation(const std::string methode)
 				lut.resize(256);
 
 				for (int i = min; i <= max; i++)   //maj de chaque pixel de l'image en fonction de la lut
-					lut[i] = (int)(((double)hC[i] / (double)this->lireNbPixels())*(double)255);
+					lut[i] = (int)(((double)hC[i] / (double)this->lireNbPixels()) * (double)255);
 
 				for (int i = 0; i < out.lireNbPixels(); i++)
 					out(i) = lut[this->operator()(i)]; //maj de chaque pixel de l'image en fonction de la lut
@@ -724,133 +720,230 @@ CImageNdg CImageNdg::transformation(const std::string methode)
 }
 
 // morphologie
-CImageNdg CImageNdg::morphologie(const std::string methode, const std::string eltStructurant) 
-{
+CImageNdg CImageNdg::morphologie(const std::string methode, const std::string eltStructurant, const int nbIteration) {
 
-	CImageNdg out(this->lireHauteur(), this->lireLargeur()); // initialisation de l'image resultat
+	CImageNdg out(this->lireHauteur(), this->lireLargeur());
 
 	out.choixPalette(this->lirePalette()); // conservation de la palette
 
 	out.m_bBinaire = this->m_bBinaire; // conservation du type
 
-	if (methode.compare("erosion") == 0) 
-	{
-		out.m_sNom = this->lireNom() + "MEr";    //image agrandie pour gestion des bords
-		CImageNdg agrandie(this->lireHauteur() + 2, this->lireLargeur() + 2); //plus grande pour permettre érosion aux bords
+	if (methode.compare("erosion") == 0) {
+		out.m_sNom = this->lireNom() + "MEr";
+		CImageNdg agrandie(this->lireHauteur() + 2, this->lireLargeur() + 2);
 
 		// gestion des bords
-		if (this->lireBinaire())  //si image binaire
-		{
+		if (this->lireBinaire()) {
 			int pix;
 
-			for (pix = 0; pix<agrandie.lireLargeur(); pix++) //bord haut et bas
-			{
-				agrandie(0, pix) = 1;    //bord haut donc première ligne tous les pixels à 1: blanc
-				agrandie(this->lireHauteur() - 1, pix) = 1;  //bord bas donc dernière ligne tous les pixels à 1: blanc
+			for (pix = 0; pix < agrandie.lireLargeur(); pix++) {
+				agrandie(0, pix) = 1;
+				agrandie(this->lireHauteur() - 1, pix) = 1;
 			}
-			for (pix = 1; pix<agrandie.lireHauteur() - 1; pix++) //bord gauche et droit
-			{
-				agrandie(pix, 0) = 1;    //bord gauche donc première colonne tous les pixels à 1: blanc
-				agrandie(pix, this->lireLargeur() - 1) = 1;  //bord droit donc dernière colonne tous les pixels à 1: blanc
+			for (pix = 1; pix < agrandie.lireHauteur() - 1; pix++) {
+				agrandie(pix, 0) = 1;
+				agrandie(pix, this->lireLargeur() - 1) = 1;
 			}
 		}
-		else {    //si image ndg
+		else {
 			int pix;
 
-			for (pix = 0; pix<agrandie.lireLargeur(); pix++) {  //bord haut et bas
-				agrandie(0, pix) = 255;   //bord haut donc première ligne tous les pixels à 255: blanc
-				agrandie(this->lireHauteur() - 1, pix) = 255;  //bord bas donc dernière ligne tous les pixels à 255: blanc
+			for (pix = 0; pix < agrandie.lireLargeur(); pix++) {
+				agrandie(0, pix) = 255;
+				agrandie(this->lireHauteur() - 1, pix) = 255;
 			}
-			for (pix = 1; pix<agrandie.lireHauteur() - 1; pix++) { //bord gauche et droit
-				agrandie(pix, 0) = 255;   //bord gauche donc première colonne tous les pixels à 255: blanc
-				agrandie(pix, this->lireLargeur() - 1) = 255;  //bord droit donc dernière colonne tous les pixels à 255: blanc
+			for (pix = 1; pix < agrandie.lireHauteur() - 1; pix++) {
+				agrandie(pix, 0) = 255;
+				agrandie(pix, this->lireLargeur() - 1) = 255;
 			}
 		}
 
 		// gestion du coeur
-		for (int i = 0; i<this->lireHauteur(); i++)
-			for (int j = 0; j<this->lireLargeur(); j++) {
-				agrandie(i + 1, j + 1) = this->operator()(i, j);    //copie de l'image originale dans le coeur de l'image agrandie
+		for (int i = 0; i < this->lireHauteur(); i++)
+			for (int j = 0; j < this->lireLargeur(); j++) {
+				agrandie(i + 1, j + 1) = this->operator()(i, j);
 			}
 
-		if (eltStructurant.compare("V4") == 0) { //erosion avec elt structurant V4
-			for (int i = 1; i<agrandie.lireHauteur() - 1; i++)
-				for (int j = 1; j<agrandie.lireLargeur() - 1; j++) {
-					int minH = min(agrandie(i, j - 1), agrandie(i, j + 1)); //valeur min des pixels voisins horizontaux
-					int minV = min(agrandie(i - 1, j), agrandie(i + 1, j)); //valeur min des pixels voisins verticaux
-					int minV4 = min(minH, minV); //valeur min des pixels voisins horizontaux et verticaux
-					out(i - 1, j - 1) = min(minV4, (int)agrandie(i, j)); //valeur du pixel = min des pixels voisins et lui meme
+		if (eltStructurant.compare("V4") == 0) {
+			for (int i = 1; i < agrandie.lireHauteur() - 1; i++)
+				for (int j = 1; j < agrandie.lireLargeur() - 1; j++) {
+					int minH = min(agrandie(i, j - 1), agrandie(i, j + 1));
+					int minV = min(agrandie(i - 1, j), agrandie(i + 1, j));
+					int minV4 = min(minH, minV);
+					out(i - 1, j - 1) = min(minV4, (int)agrandie(i, j));
 				}
 		}
 		else {
 			if (eltStructurant.compare("V8") == 0) {
-				for (int i = 1; i<agrandie.lireHauteur() - 1; i++)  //parcour de l'image agrandie en excluant les bords
-					for (int j = 1; j<agrandie.lireLargeur() - 1; j++) {    //parcour de l'image agrandie en excluant les bords
-						int minH = min(agrandie(i, j - 1), agrandie(i, j + 1)); //valeur min des pixels voisins horizontaux
-						int minV = min(agrandie(i - 1, j), agrandie(i + 1, j)); //valeur min des pixels voisins verticaux
-						int minV4 = min(minH, minV); //valeur min des pixels voisins horizontaux et verticaux
-						int minD1 = min(agrandie(i - 1, j - 1), agrandie(i + 1, j + 1)); //valeur min des pixels voisins diagonaux 1
-						int minD2 = min(agrandie(i - 1, j + 1), agrandie(i + 1, j - 1)); //valeur min des pixels voisins diagonaux 2
-						int minD = min(minD1, minD2); //valeur min des pixels voisins diagonaux
-						int minV8 = min(minV4, minD); //valeur min des pixels voisins horizontaux, verticaux et diagonaux
-						out(i - 1, j - 1) = min(minV8, (int)agrandie(i, j)); //valeur du pixel = min des pixels voisins et lui meme
+				for (int i = 1; i < agrandie.lireHauteur() - 1; i++)
+					for (int j = 1; j < agrandie.lireLargeur() - 1; j++) {
+						int minH = min(agrandie(i, j - 1), agrandie(i, j + 1));
+						int minV = min(agrandie(i - 1, j), agrandie(i + 1, j));
+						int minV4 = min(minH, minV);
+						int minD1 = min(agrandie(i - 1, j - 1), agrandie(i + 1, j + 1));
+						int minD2 = min(agrandie(i - 1, j + 1), agrandie(i + 1, j - 1));
+						int minD = min(minD1, minD2);
+						int minV8 = min(minV4, minD);
+						out(i - 1, j - 1) = min(minV8, (int)agrandie(i, j));
 					}
 			}
 		}
 	}
 	else {
-		if (methode.compare("dilatation") == 0)          
-		{
-			out.m_sNom = this->lireNom() + "MDi";   //image agrandie pour gestion des bords
-			CImageNdg agrandie(this->lireHauteur() + 2, this->lireLargeur() + 2); //image agrandie pour gestion des bords
+		if (methode.compare("dilatation") == 0) {
+			out.m_sNom = this->lireNom() + "MDi";
+			CImageNdg agrandie(this->lireHauteur() + 2, this->lireLargeur() + 2);
 
 			// gestion des bords
-			int pix; 
+			int pix;
 
-			for (pix = 0; pix<agrandie.lireLargeur(); pix++) {
-				agrandie(0, pix) = 0; //bord haut donc première ligne tous les pixels à 0: noir
-				agrandie(agrandie.lireHauteur() - 1, pix) = 0; //bord bas donc dernière ligne tous les pixels à 0: noir
+			for (pix = 0; pix < agrandie.lireLargeur(); pix++) {
+				agrandie(0, pix) = 0;
+				agrandie(agrandie.lireHauteur() - 1, pix) = 0;
 			}
-			for (pix = 1; pix<agrandie.lireHauteur() - 1; pix++) {
-				agrandie(pix, 0) = 0;  //bord gauche donc première colonne tous les pixels à 0: noir
-				agrandie(pix, agrandie.lireLargeur() - 1) = 0; //bord droit donc dernière colonne tous les pixels à 0: noir
+			for (pix = 1; pix < agrandie.lireHauteur() - 1; pix++) {
+				agrandie(pix, 0) = 0;
+				agrandie(pix, agrandie.lireLargeur() - 1) = 0;
 			}
 
 			// gestion du coeur
-			for (int i = 0; i<this->lireHauteur(); i++) 
-				for (int j = 0; j<this->lireLargeur(); j++) {
-					agrandie(i + 1, j + 1) = this->operator()(i, j);   //copie de l'image originale dans le coeur de l'image agrandie
+			for (int i = 0; i < this->lireHauteur(); i++)
+				for (int j = 0; j < this->lireLargeur(); j++) {
+					agrandie(i + 1, j + 1) = this->operator()(i, j);
 				}
 
-			if (eltStructurant.compare("V4") == 0) { //dilatation avec elt structurant V4
-				for (int i = 1; i<agrandie.lireHauteur() - 1; i++) //parcour de l'image agrandie en excluant les bords
-					for (int j = 1; j<agrandie.lireLargeur() - 1; j++) { //parcour de l'image agrandie en excluant les bords
-						int maxH = max(agrandie(i, j - 1), agrandie(i, j + 1)); //valeur max des pixels voisins horizontaux
-						int maxV = max(agrandie(i - 1, j), agrandie(i + 1, j)); //valeur max des pixels voisins verticaux
-						int maxV4 = max(maxH, maxV); //valeur max des pixels voisins horizontaux et verticaux
-						out(i - 1, j - 1) = max(maxV4, (int)agrandie(i, j)); //valeur du pixel = max des pixels voisins et lui meme
+			if (eltStructurant.compare("V4") == 0) {
+				for (int i = 1; i < agrandie.lireHauteur() - 1; i++)
+					for (int j = 1; j < agrandie.lireLargeur() - 1; j++) {
+						int maxH = max(agrandie(i, j - 1), agrandie(i, j + 1));
+						int maxV = max(agrandie(i - 1, j), agrandie(i + 1, j));
+						int maxV4 = max(maxH, maxV);
+						out(i - 1, j - 1) = max(maxV4, (int)agrandie(i, j));
 					}
 			}
 			else {
-				if (eltStructurant.compare("V8") == 0) { //dilatation avec elt structurant V8
-					for (int i = 1; i<agrandie.lireHauteur() - 1; i++) //parcour de l'image agrandie en excluant les bords
-						for (int j = 1; j<agrandie.lireLargeur() - 1; j++) { //parcour de l'image agrandie en excluant les bords
-							int maxH = max(agrandie(i, j - 1), agrandie(i, j + 1)); //valeur max des pixels voisins horizontaux
-							int maxV = max(agrandie(i - 1, j), agrandie(i + 1, j)); //valeur max des pixels voisins verticaux
-							int maxV4 = max(maxH, maxV); //valeur max des pixels voisins horizontaux et verticaux
-							int maxD1 = max(agrandie(i - 1, j - 1), agrandie(i + 1, j + 1)); //valeur max des pixels voisins diagonaux 1
-							int maxD2 = max(agrandie(i - 1, j + 1), agrandie(i + 1, j - 1)); //valeur max des pixels voisins diagonaux 2
-							int maxD = max(maxD1, maxD2); //valeur max des pixels voisins diagonaux
-							int maxV8 = max(maxV4, maxD); //valeur max des pixels voisins horizontaux, verticaux et diagonaux
-							out(i - 1, j - 1) = max(maxV8, (int)agrandie(i, j)); //valeur du pixel = max des pixels voisins et lui meme
+				if (eltStructurant.compare("V8") == 0) {
+					for (int i = 1; i < agrandie.lireHauteur() - 1; i++)
+						for (int j = 1; j < agrandie.lireLargeur() - 1; j++) {
+							int maxH = max(agrandie(i, j - 1), agrandie(i, j + 1));
+							int maxV = max(agrandie(i - 1, j), agrandie(i + 1, j));
+							int maxV4 = max(maxH, maxV);
+							int maxD1 = max(agrandie(i - 1, j - 1), agrandie(i + 1, j + 1));
+							int maxD2 = max(agrandie(i - 1, j + 1), agrandie(i + 1, j - 1));
+							int maxD = max(maxD1, maxD2);
+							int maxV8 = max(maxV4, maxD);
+							out(i - 1, j - 1) = max(maxV8, (int)agrandie(i, j));
 						}
 				}
 			}
 		}
 	}
+	if (methode.compare("ouverture") == 0)
+	{
+		if (eltStructurant.compare("V4") == 0)
+		{
+			out = this->morphologie("erosion", "V4");
+			out = out.morphologie("dilatation", "V4");
+		}
+
+		if (eltStructurant.compare("V8") == 0)
+		{
+			out = this->morphologie("erosion", "V8");
+			out = out.morphologie("dilatation", "V8");
+		}
+	}
+	if (methode.compare("fermeture") == 0)
+	{
+		if (eltStructurant.compare("V4") == 0)
+		{
+			out = this->morphologie("dilatation", "V4");
+			out = out.morphologie("erosion", "V4");
+		}
+
+		if (eltStructurant.compare("V8") == 0)
+		{
+			out = this->morphologie("dilatation", "V8");
+			out = out.morphologie("erosion", "V8");
+		}
+	}
+	if (methode.compare("whiteTopHat") == 0)
+	{
+		CImageNdg wth(out);
+
+		if (eltStructurant.compare("V4") == 0)
+		{
+			wth = this->morphologie("erosion", "V4");
+			for (int i = 0; i < nbIteration - 1; i++)
+			{
+				wth = wth.morphologie("erosion", "V4");
+			}
+			for (int i = 0; i < nbIteration; i++)
+			{
+				wth = wth.morphologie("dilatation", "V4");
+			}
+		}
+
+		if (eltStructurant.compare("V8") == 0)
+		{
+			wth = this->morphologie("erosion", "V8");
+			for (int i = 0; i < nbIteration - 1; i++)
+			{
+				wth = wth.morphologie("erosion", "V8");
+			}
+			for (int i = 0; i < nbIteration; i++)
+			{
+				wth = wth.morphologie("dilatation", "V8");
+			}
+		}
+
+		int temp;
+		for (int i = 0; i < this->lireNbPixels(); i++)
+		{
+			temp = this->operator()(i) - wth(i);
+
+			out(i) = temp;
+		}
+	}
+	if (methode.compare("blackTopHat") == 0)
+	{
+		CImageNdg bth(out);
+
+		if (eltStructurant.compare("V4") == 0)
+		{
+			bth = this->morphologie("dilatation", "V4");
+			for (int i = 0; i < nbIteration - 1; i++)
+			{
+				bth = bth.morphologie("dilatation", "V4");
+			}
+			for (int i = 0; i < nbIteration; i++)
+			{
+				bth = bth.morphologie("erosion", "V4");
+			}
+		}
+
+		if (eltStructurant.compare("V8") == 0)
+		{
+			bth = this->morphologie("dilatation", "V8");
+			for (int i = 0; i < nbIteration - 1; i++)
+			{
+				bth = bth.morphologie("dilatation", "V8");
+			}
+			for (int i = 0; i < nbIteration; i++)
+			{
+				bth = bth.morphologie("erosion", "V8");
+			}
+		}
+
+		int temp;
+		for (int i = 0; i < this->lireNbPixels(); i++)
+		{
+			temp = this->operator()(i) - bth(i);
+
+			out(i) = temp;
+		}
+	}
 
 	return out;
-
 }
 
 CImageNdg CImageNdg::nonMaximaSuppression(const CImageNdg& angleImage)
@@ -1093,59 +1186,39 @@ CImageNdg CImageNdg::sobel()
 	return imgSobel;
 }
 
-CImageNdg CImageNdg::invert()
-{
-	CImageNdg imgInvert(lireHauteur(), lireLargeur());
-
-	for (int i = 0; i < lireHauteur(); i++)
-	{
-		for (int j = 0; j < lireLargeur(); j++)
-		{
-			imgInvert(i, j) = 255 - operator()(i, j);
-		}
-	}
-
-	return imgInvert;
-}
-
-#include "ImageClasse.h"
-
 CImageNdg CImageNdg::process()
 {
 	CImageNdg tmp = *this;
 
-	std::cout << "Processing image " << tmp.lireNom() << std::endl;
-
-	// Invert the image if its name starts with "In"
-	if (tmp.lireNom().find("In") == 0)
+	std::regex inPattern(".*In.*", std::regex_constants::icase);
+	if (std::regex_match(tmp.lireNom(), inPattern))
 	{
-		tmp = tmp.invert();
+		tmp = tmp.transformation("complement");
+		tmp.sauvegarde("In");
 	}
 
-	// First step, we apply a gaussian filter to the image
-	CImageNdg imgFiltered = tmp.filtrage("median", 5, 5);
-
-	// Contours detection, sobel operator
-	CImageNdg imgSobel = imgFiltered.sobel();
+	// White tophat
+	CImageNdg imgWTH = tmp.morphologie("whiteTopHat", "V8", 10);
 
 	// Thresholding
-	CImageNdg imgThresholded = imgSobel.seuillage("otsu");
-
-	imgThresholded.sauvegarde("qsdazd_AVANT");
+	CImageNdg imgThresholded = imgWTH.seuillage("otsu");
 
 	// Filter out small objects
 	CImageClasse imgClasse{ imgThresholded, "V8" };
-
-	imgClasse = imgClasse.filtrage("taille", 15);
-
 	CImageNdg imgFilteredSmallObjects = imgClasse.toNdg().seuillage("manuel", 1);
-	imgFilteredSmallObjects.sauvegarde("qsdazd");
 
-	// Fermeture
-	CImageNdg imgMorpho = imgFilteredSmallObjects.morphologie("dilatation", "V8");
-	imgMorpho = imgMorpho.morphologie("erosion", "V8");
+	// Morphologie (2x erosion)
+	CImageNdg imgMorpho = imgFilteredSmallObjects.morphologie("erosion");
+	imgMorpho = imgMorpho.morphologie("erosion");
 
-	imgMorpho.sauvegarde("qsdazd_APRES");
+	// Filter out small objects again
+	CImageClasse imgClasse2{ imgMorpho, "V8" };
+	imgClasse2 = imgClasse2.filtrage("taille", 25);
+	CImageNdg imgFilteredSmallObjects2 = imgClasse2.toNdg().seuillage("manuel", 1);
+
+	// Morphologie (2x dilatation)
+	imgMorpho = imgFilteredSmallObjects2.morphologie("dilatation");
+	imgMorpho = imgMorpho.morphologie("dilatation");
 
 	return imgMorpho;
 }
