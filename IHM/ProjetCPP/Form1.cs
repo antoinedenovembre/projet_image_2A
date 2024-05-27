@@ -38,6 +38,36 @@ namespace ProjetCPP
             dossierBase = folderBrowserDialog.SelectedPath;
 
             InitialiserImages();
+            InitialiserTreeView();
+        }
+
+        private void InitialiserTreeView()
+        {
+            treeView1.Nodes.Clear();
+            TreeNode rootNode = new TreeNode(dossierBase);
+            treeView1.Nodes.Add(rootNode);
+            AjouterNoeudsDossier(rootNode, dossierBase);
+            treeView1.ExpandAll();
+        }
+
+        private void AjouterNoeudsDossier(TreeNode parentNode, string dossier)
+        {
+            string[] sousDossiers = Directory.GetDirectories(dossier);
+            foreach (string sousDossier in sousDossiers)
+            {
+                TreeNode dossierNode = new TreeNode(Path.GetFileName(sousDossier));
+                parentNode.Nodes.Add(dossierNode);
+                AjouterNoeudsDossier(dossierNode, sousDossier);
+            }
+
+            string[] fichiers = Directory.GetFiles(dossier, ".")
+                .Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            foreach (string fichier in fichiers)
+            {
+                TreeNode fichierNode = new TreeNode(Path.GetFileName(fichier));
+                parentNode.Nodes.Add(fichierNode);
+            }
         }
 
         private void startStopCycle(object sender, EventArgs e)

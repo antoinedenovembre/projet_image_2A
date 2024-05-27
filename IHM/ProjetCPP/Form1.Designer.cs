@@ -40,6 +40,7 @@
             label4 = new Label();
             labelVerdict = new Label();
             timer = new System.Windows.Forms.Timer(components);
+            treeView1 = new TreeView();
             ((System.ComponentModel.ISupportInitialize)pictureBoxvterrain).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBoxTraite).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBoxiinitiale).BeginInit();
@@ -48,7 +49,7 @@
             // pictureBoxvterrain
             // 
             pictureBoxvterrain.BorderStyle = BorderStyle.FixedSingle;
-            pictureBoxvterrain.Location = new Point(599, 113);
+            pictureBoxvterrain.Location = new Point(842, 101);
             pictureBoxvterrain.Name = "pictureBoxvterrain";
             pictureBoxvterrain.Size = new Size(285, 258);
             pictureBoxvterrain.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -58,7 +59,7 @@
             // pictureBoxTraite
             // 
             pictureBoxTraite.BorderStyle = BorderStyle.FixedSingle;
-            pictureBoxTraite.Location = new Point(318, 113);
+            pictureBoxTraite.Location = new Point(561, 101);
             pictureBoxTraite.Name = "pictureBoxTraite";
             pictureBoxTraite.Size = new Size(275, 258);
             pictureBoxTraite.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -68,7 +69,7 @@
             // pictureBoxiinitiale
             // 
             pictureBoxiinitiale.BorderStyle = BorderStyle.FixedSingle;
-            pictureBoxiinitiale.Location = new Point(28, 113);
+            pictureBoxiinitiale.Location = new Point(271, 101);
             pictureBoxiinitiale.Name = "pictureBoxiinitiale";
             pictureBoxiinitiale.Size = new Size(284, 258);
             pictureBoxiinitiale.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -77,7 +78,7 @@
             // 
             // btnStartStop
             // 
-            btnStartStop.Location = new Point(620, 400);
+            btnStartStop.Location = new Point(863, 388);
             btnStartStop.Name = "btnStartStop";
             btnStartStop.Size = new Size(236, 68);
             btnStartStop.TabIndex = 4;
@@ -87,7 +88,7 @@
             // 
             // btnOuvrir
             // 
-            btnOuvrir.Location = new Point(333, 400);
+            btnOuvrir.Location = new Point(576, 388);
             btnOuvrir.Name = "btnOuvrir";
             btnOuvrir.Size = new Size(245, 68);
             btnOuvrir.TabIndex = 5;
@@ -98,7 +99,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(28, 65);
+            label1.Location = new Point(271, 53);
             label1.Name = "label1";
             label1.Size = new Size(117, 25);
             label1.TabIndex = 6;
@@ -107,7 +108,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(318, 65);
+            label2.Location = new Point(561, 53);
             label2.Name = "label2";
             label2.Size = new Size(116, 25);
             label2.TabIndex = 7;
@@ -116,7 +117,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(599, 65);
+            label3.Location = new Point(842, 53);
             label3.Name = "label3";
             label3.Size = new Size(111, 25);
             label3.TabIndex = 8;
@@ -125,7 +126,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(890, 65);
+            label4.Location = new Point(1133, 53);
             label4.Name = "label4";
             label4.Size = new Size(66, 25);
             label4.TabIndex = 9;
@@ -135,16 +136,24 @@
             // 
             labelVerdict.BackColor = Color.White;
             labelVerdict.BorderStyle = BorderStyle.FixedSingle;
-            labelVerdict.Location = new Point(890, 113);
+            labelVerdict.Location = new Point(1133, 101);
             labelVerdict.Name = "labelVerdict";
             labelVerdict.Size = new Size(266, 258);
             labelVerdict.TabIndex = 10;
+            // 
+            // treeView1
+            // 
+            treeView1.Location = new Point(12, 10);
+            treeView1.Name = "treeView1";
+            treeView1.Size = new Size(237, 473);
+            treeView1.TabIndex = 11;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1228, 515);
+            ClientSize = new Size(1440, 495);
+            Controls.Add(treeView1);
             Controls.Add(labelVerdict);
             Controls.Add(label4);
             Controls.Add(label3);
@@ -177,5 +186,6 @@
         private Label label4;
         private Label labelVerdict;
         private System.Windows.Forms.Timer timer;
+        private TreeView treeView1;
     }
 }
