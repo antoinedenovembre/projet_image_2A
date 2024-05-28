@@ -1,7 +1,6 @@
 using libImage;
 using System.Data;
 using System.Drawing.Imaging;
-using Image = System.Drawing.Image;
 
 namespace ProjetCPP
 {
@@ -19,11 +18,39 @@ namespace ProjetCPP
         // Booleen pour savoir si le cycle est en cours
         private bool cycleEnCours = false;
 
+        // Listes des scores
+        private List<double> scoresIou = new List<double>();
+        private List<double> scoresHamming = new List<double>();
+
         public Form1()
         {
             InitializeComponent();
-            timer.Interval = 200;
+            timer.Interval = 1;
             timer.Tick += Timer_Tick;
+
+            switchProgressVisibility(false);
+            switchScoreStats(false);
+        }
+
+        private void switchProgressVisibility(bool visible)
+        {
+            progressBar.Visible = visible;
+            progressTitleLabel.Visible = visible;
+            progressLabel.Visible = visible;
+
+            this.Height = visible ? this.Height + 100 : this.Height - 100;
+        }
+
+        private void switchScoreStats(bool visible)
+        {
+            labelMeanIou.Visible = visible;
+            labelMedIou.Visible = visible;
+            meanIou.Visible = visible;
+            medIou.Visible = visible;
+            labelMeanHamming.Visible = visible;
+            labelMedHamming.Visible = visible;
+            meanHamming.Visible = visible;
+            medHamming.Visible = visible;
         }
 
         private void ouvrir(object sender, EventArgs e)
@@ -35,39 +62,25 @@ namespace ProjetCPP
             folderBrowserDialog.RootFolder = Environment.SpecialFolder.MyComputer;
             folderBrowserDialog.ShowDialog();
 
+            if (string.IsNullOrEmpty(folderBrowserDialog.SelectedPath))
+            {
+                return;
+            }
+
             dossierBase = folderBrowserDialog.SelectedPath;
 
-            InitialiserImages();
-            InitialiserTreeView();
-        }
+            switchProgressVisibility(true);
+            switchScoreStats(true);
 
-        private void InitialiserTreeView()
-        {
-            treeView1.Nodes.Clear();
-            TreeNode rootNode = new TreeNode(dossierBase);
-            treeView1.Nodes.Add(rootNode);
-            AjouterNoeudsDossier(rootNode, dossierBase);
-            treeView1.ExpandAll();
-        }
-
-        private void AjouterNoeudsDossier(TreeNode parentNode, string dossier)
-        {
-            string[] sousDossiers = Directory.GetDirectories(dossier);
-            foreach (string sousDossier in sousDossiers)
-            {
-                TreeNode dossierNode = new TreeNode(Path.GetFileName(sousDossier));
-                parentNode.Nodes.Add(dossierNode);
-                AjouterNoeudsDossier(dossierNode, sousDossier);
-            }
-
-            string[] fichiers = Directory.GetFiles(dossier, ".")
+            // Initialiser la progress bar a la bonne taille, avec seulement le dossier image_init_source considéré
+            progressBar.Maximum = Directory.EnumerateFiles(Path.Combine(dossierBase, "image_init_source"))
                 .Where(file => file.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-            foreach (string fichier in fichiers)
-            {
-                TreeNode fichierNode = new TreeNode(Path.GetFileName(fichier));
-                parentNode.Nodes.Add(fichierNode);
-            }
+                .ToArray().Length;
+
+            // Initialiser le label de progression, avec entre parentheses le pourcentage de progression
+            progressLabel.Text = "0/" + progressBar.Maximum + " (0%)";
+
+            InitialiserImages();
         }
 
         private void startStopCycle(object sender, EventArgs e)
@@ -102,12 +115,14 @@ namespace ProjetCPP
                 }
                 else
                 {
-                    indexVeriteTerrain = 0;
+                    timer.Stop();
+                    return;
                 }
             }
             else
             {
-                indexImageInit = 0;
+                timer.Stop();
+                return;
             }
 
             Bitmap bmp = new Bitmap(pictureBoxiinitiale.Image);
@@ -118,18 +133,30 @@ namespace ProjetCPP
             {
                 BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
                 BitmapData bmpDataGT = bmpGT.LockBits(new Rectangle(0, 0, bmpGT.Width, bmpGT.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
-                Img.objetLibDataImgPtr(1, bmpData.Scan0, bmpDataGT.Scan0, bmpData.Stride, bmp.Height, bmp.Width);
+                Img.objetLibDataImgPtr(2, bmpData.Scan0, bmpDataGT.Scan0, bmpData.Stride, bmp.Height, bmp.Width);
                 bmp.UnlockBits(bmpData);
                 bmpGT.UnlockBits(bmpDataGT);
             }
 
-            double score = (double)Img.objetLibValeurChamp(0) * 100;
+            double scoreIou = (double)Img.objetLibValeurChamp(0) * 100;
+            double scoreHamming = (double)Img.objetLibValeurChamp(1) * 100;
 
-            label4.Text = "Score : " + score.ToString("F1");
+            scoresIou.Add(scoreIou);
+            scoresHamming.Add(scoreHamming);
 
-            displayVerdict(score);
+            iouValue.Text = scoreIou.ToString("F2") + "%";
+            hammingValue.Text = scoreHamming.ToString("F2") + "%";
+            displayVerdictIou(scoreIou);
+            displayVerdictHamming(scoreHamming);
 
-            // transférer C++ vers bmp
+            // Calcul de la moyenne et de la médiane
+            meanIou.Text = scoresIou.Average().ToString("F2") + "%";
+            medIou.Text = Median(scoresIou).ToString("F2") + "%";
+
+            meanHamming.Text = scoresHamming.Average().ToString("F2") + "%";
+            medHamming.Text = Median(scoresHamming).ToString("F2") + "%";
+
+
             pictureBoxTraite.Image = bmp;
 
             // Mettre à jour l'image de vérité terrain
@@ -145,6 +172,26 @@ namespace ProjetCPP
 
             indexImageInit++;
             indexVeriteTerrain++;
+
+            // Liberation de la mémoire
+            bmpGT.Dispose();
+
+            // Update progress bar and progress label
+            progressBar.Value = indexImageInit;
+            progressLabel.Text = indexImageInit + "/" + progressBar.Maximum + " (" + (indexImageInit * 100 / progressBar.Maximum) + "%)";
+        }
+
+        private double Median(List<double> sourceNumbers)
+        {
+            // Create a copy of the input, and sort the copy
+            double[] sortedPNumbers = sourceNumbers.ToArray();
+            Array.Sort(sortedPNumbers);
+
+            // Get the median
+            int size = sortedPNumbers.Length;
+            int mid = size / 2;
+            double median = (size % 2 != 0) ? (double)sortedPNumbers[mid] : ((double)sortedPNumbers[mid] + (double)sortedPNumbers[mid - 1]) / 2;
+            return median;
         }
 
         private void InitialiserImages()
@@ -186,20 +233,37 @@ namespace ProjetCPP
             indexVeriteTerrain = 0;
         }
 
-        private void displayVerdict(double score)
+        private void displayVerdictIou(double score)
         {
             // Définir la couleur de fond du label Verdict basé sur le pourcentage
-            if (score > 70)
+            if (score > 50)
             {
-                labelVerdict.BackColor = Color.Green;
+                labelVerdictIOU.BackColor = Color.Green;
             }
-            else if (score > 50 && score <= 70)
+            else if (score > 40 && score <= 50)
             {
-                labelVerdict.BackColor = Color.Yellow;
+                labelVerdictIOU.BackColor = Color.Yellow;
             }
             else
             {
-                labelVerdict.BackColor = Color.Red;
+                labelVerdictIOU.BackColor = Color.Red;
+            }
+        }
+
+        private void displayVerdictHamming(double score)
+        {
+            // Définir la couleur de fond du label Verdict basé sur le pourcentage
+            if (score > 90)
+            {
+                labelVerdictHamming.BackColor = Color.Green;
+            }
+            else if (score > 70 && score <= 90)
+            {
+                labelVerdictHamming.BackColor = Color.Yellow;
+            }
+            else
+            {
+                labelVerdictHamming.BackColor = Color.Red;
             }
         }
     }

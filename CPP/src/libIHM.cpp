@@ -49,8 +49,10 @@ ClibIHM::ClibIHM(int nbChamps, byte* data, byte* GT, int stride, int nbLig, int 
 	CImageNdg GTNdg = GTImg.plan();
 	GTNdg.ecrireBinaire(true);
 
-	double score = res.score(GTNdg);
-	this->dataFromImg.at(0) = score;
+	double scoreIou = res.score(GTNdg);
+	this->dataFromImg.at(0) = scoreIou;
+	double scoreHamming = res.Hammingdistance(GTNdg);
+	this->dataFromImg.at(1) = scoreHamming;
 
 	pixPtr = (byte*)data;
 	for (int y = 0; y < nbLig; y++)

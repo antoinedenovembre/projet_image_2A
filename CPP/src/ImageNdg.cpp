@@ -1133,9 +1133,13 @@ double CImageNdg::Hammingdistance(const CImageNdg& imveriteterrain) // distance 
 		}
 	}
 
-	// Calcul et retour de la distance de Hamming normalisée
+	// Calcul de la distance de hamming
 	double normalisationHammingDistance = static_cast<double>(hammingDistance) / (this->lireHauteur() * this->lireLargeur());
-	return normalisationHammingDistance;
+	
+	// Calcul du pourcentage de similarité
+	double pourcentageSimilarite = 1 - normalisationHammingDistance;
+	
+	return pourcentageSimilarite;
 }
 
 
